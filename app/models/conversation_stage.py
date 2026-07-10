@@ -1,0 +1,7 @@
+from enum import Enum
+
+
+class ConversationStage(str, Enum):
+    WAITING_ACCESS_CLICK = "WAITING_ACCESS_CLICK"
+    WAITING_FOLLOW_CONFIRM = "WAITING_FOLLOW_CONFIRM"
+    COMPLETED = "COMPLETED"
