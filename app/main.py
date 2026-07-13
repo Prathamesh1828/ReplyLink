@@ -1,7 +1,10 @@
-from fastapi import FastAPI, Query, Request
-from dotenv import load_dotenv
-import os
 import json
+import os
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, Query, Request
+
+from app.api.knowledge import router as knowledge_router
 
 # --------------------------------------------------
 # Load Environment Variables
@@ -15,10 +18,19 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 # FastAPI App
 # --------------------------------------------------
 
-app = FastAPI()
+app = FastAPI(
+    title="ReplyLink API",
+    version="1.0.0"
+)
 
 # --------------------------------------------------
-# Sample Automations
+# Register API Routers
+# --------------------------------------------------
+
+app.include_router(knowledge_router)
+
+# --------------------------------------------------
+# Sample Automations (Temporary)
 # --------------------------------------------------
 
 KEYWORDS = {
@@ -79,7 +91,6 @@ async def receive_webhook(request: Request):
     print("=" * 60)
 
     print(json.dumps(payload, indent=2))
-
     print("=" * 60)
 
     try:
@@ -113,10 +124,6 @@ async def receive_webhook(request: Request):
                     print("User:", username)
                     print("Comment:", comment_text)
 
-                    # ----------------------------------
-                    # Keyword Detection
-                    # ----------------------------------
-
                     keyword = comment_text.strip().upper()
 
                     if keyword in KEYWORDS:
@@ -127,18 +134,16 @@ async def receive_webhook(request: Request):
                         print("Keyword:", keyword)
                         print("Response:", response_message)
 
-                        # Future:
-                        # send_instagram_dm(
-                        #     username,
-                        #     response_message
-                        # )
+                        # TODO:
+                        # Replace with Automation Service
+                        # automation_service.handle_comment(...)
 
                     else:
 
                         print("\nNO AUTOMATION FOUND")
 
                 # --------------------------------------
-                # Messages Event
+                # Message Event
                 # --------------------------------------
 
                 elif field == "messages":
@@ -152,10 +157,9 @@ async def receive_webhook(request: Request):
                         )
                     )
 
-                    # Future:
-                    # FAQ Search
-                    # Gemini Response
-                    # Auto Reply
+                    # TODO:
+                    # Replace with FAQ Service
+                    # faq_service.handle_message(...)
 
     except Exception as e:
 

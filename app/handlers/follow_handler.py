@@ -1,40 +1,68 @@
 from app.services.conversation_service import (
     get_conversation,
-    update_stage,
-    complete_conversation
+    complete_conversation,
 )
 
-from app.services.automation_service import get_automation_by_id
+from app.services.automation_service import (
+    get_automation_by_id,
+)
 
-from app.services.instagram_service import send_dm
+from app.services.instagram_service import (
+    send_dm,
+    send_follow_message,
+)
 
-from app.models.conversation_stage import ConversationStage
-from app.utils.helper import DEMO_USER_ID
+from app.services.follow_service import (
+    verify_follow,
+)
+
+from app.models.conversation_stage import (
+    ConversationStage,
+)
+
+from app.utils.helper import (
+    DEMO_USER_ID,
+)
 
 
 def handle_follow_confirmation(username: str):
     """
-    User clicked 'I'm Following'
+    Handles the user clicking:
+
+    "I'm Following ✅"
     """
 
     conversation = get_conversation(
-        DEMO_USER_ID,
-        username
+        user_id=DEMO_USER_ID,
+        username=username,
     )
 
-    if not conversation:
+    if conversation is None:
         print("Conversation not found.")
         return
 
-    if conversation["current_stage"] != ConversationStage.WAITING_FOLLOW_CONFIRM.value:
-        print("User is not expected to confirm follow.")
+    if (
+        conversation["current_stage"]
+        != ConversationStage.WAITING_FOLLOW_CONFIRM.value
+    ):
+        print(
+            f"Invalid conversation stage: "
+            f"{conversation['current_stage']}"
+        )
         return
 
-    # Temporary mock verification
-    is_following = True
+    # Temporary mock verification.
+    # Later this will call the real Instagram Graph API.
+    is_following = verify_follow(
+        business_account_id="mock_business_id",
+        instagram_user_id=username,
+    )
 
     if not is_following:
-        print("User is not following.")
+        print("User is not following yet.")
+
+        send_follow_message(username)
+
         return
 
     automation = get_automation_by_id(
@@ -48,12 +76,7 @@ def handle_follow_confirmation(username: str):
 
     send_dm(
         username,
-        final_message
-    )
-
-    update_stage(
-        conversation["id"],
-        ConversationStage.COMPLETED
+        final_message,
     )
 
     complete_conversation(
