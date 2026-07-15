@@ -1,1 +1,0 @@
-DEMO_USER_ID = "e1035004-6ce8-46bc-a202-38da2c6e42c8"
