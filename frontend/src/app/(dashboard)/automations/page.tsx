@@ -16,14 +16,14 @@ export default function AutomationsPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Automations</h2>
           <p className="text-muted-foreground">
-            Create and manage AI reply workflows for DMs and comments.
+            Create and manage your automation flows
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <Link href="/automations/builder">
-            <Button>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
               <Plus className="mr-2 h-4 w-4" />
-              Create Automation
+              Create New Automation
             </Button>
           </Link>
         </div>

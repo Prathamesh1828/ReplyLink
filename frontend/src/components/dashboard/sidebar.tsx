@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  BarChart3,
+
   BookOpen,
   CreditCard,
   LayoutDashboard,
@@ -34,7 +34,7 @@ const navItems = [
   { title: "Templates", href: "/templates", icon: MessageSquare },
   { title: "Knowledge Base", href: "/knowledge-base", icon: BookOpen },
   { title: "Contacts", href: "/contacts", icon: Users },
-  { title: "Analytics", href: "/analytics", icon: BarChart3 },
+
   { title: "Instagram", href: "/instagram", icon: Camera },
   { title: "AI Settings", href: "/ai-settings", icon: Sparkles },
 ]
@@ -77,20 +77,22 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
           {navItems.map((item, index) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
             return (
-              <Tooltip key={index} delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                      isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground",
-                      isCollapsed && "justify-center px-2"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {!isCollapsed && <span>{item.title}</span>}
-                  </Link>
-                </TooltipTrigger>
+              <Tooltip key={index}>
+                <TooltipTrigger
+                  render={
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground",
+                        isCollapsed && "justify-center px-2"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </Link>
+                  }
+                />
                 {isCollapsed && (
                   <TooltipContent side="right" className="flex items-center gap-4">
                     {item.title}
@@ -107,20 +109,22 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
           {bottomNavItems.map((item, index) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
             return (
-              <Tooltip key={index} delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                      isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground",
-                      isCollapsed && "justify-center px-2"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {!isCollapsed && <span>{item.title}</span>}
-                  </Link>
-                </TooltipTrigger>
+              <Tooltip key={index}>
+                <TooltipTrigger
+                  render={
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground",
+                        isCollapsed && "justify-center px-2"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </Link>
+                  }
+                />
                 {isCollapsed && (
                   <TooltipContent side="right" className="flex items-center gap-4">
                     {item.title}

@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import Link from "next/link"
 
 const forgotPasswordSchema = z.object({
@@ -64,9 +64,9 @@ export default function ForgotPasswordForm() {
         <p className="text-sm font-medium text-green-600 dark:text-green-400">
           Check your email for a link to reset your password. If it doesn't appear within a few minutes, check your spam folder.
         </p>
-        <Button variant="outline" asChild className="mt-4">
-          <Link href="/login">Return to login</Link>
-        </Button>
+        <Link href="/login" className={buttonVariants({ variant: "outline", className: "mt-4" })}>
+          Return to login
+        </Link>
       </motion.div>
     )
   }

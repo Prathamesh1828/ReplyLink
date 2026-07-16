@@ -1,271 +1,812 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  MessageSquare,
-  Reply,
-  AtSign,
-  Zap,
-  Sparkles,
-} from "lucide-react"
+import { ArrowLeft, Play, X, Plus, Sparkles, MessageCircle, Info, Image as ImageIcon, Link as LinkIcon, Smile, Trash2, Edit2, Check, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import EmojiPicker from "emoji-picker-react"
+import { PhonePreview, BuilderState } from "./phone-preview"
 import { cn } from "@/lib/utils"
 
-const steps = [
-  { id: 1, title: "Trigger", description: "What starts this automation?" },
-  { id: 2, title: "Conditions", description: "When should the AI respond?" },
-  { id: 3, title: "Response", description: "How should the AI reply?" },
-  { id: 4, title: "Review", description: "Confirm and launch" },
-]
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div 
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "w-10 h-5 rounded-full flex items-center px-0.5 cursor-pointer transition-colors shrink-0",
+        checked ? "bg-indigo-600 dark:bg-indigo-500" : "bg-slate-300 dark:bg-slate-700"
+      )}
+    >
+      <div className={cn(
+        "w-4 h-4 bg-white rounded-full transition-transform shadow-sm",
+        checked ? "translate-x-5" : "translate-x-0"
+      )} />
+    </div>
+  )
+}
 
-const triggerOptions = [
-  {
-    id: "dm",
-    label: "Direct Message",
-    description: "Respond when someone sends you a DM",
-    icon: MessageSquare,
-  },
-  {
-    id: "comment",
-    label: "Comment on Post",
-    description: "Reply when someone comments on your post",
-    icon: Reply,
-  },
-  {
-    id: "story_reply",
-    label: "Story Reply",
-    description: "Respond to story mentions and replies",
-    icon: AtSign,
-  },
-]
-
-export default function AutomationBuilderPage() {
-  const router = useRouter()
-  const [currentStep, setCurrentStep] = useState(1)
-  const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null)
-  const [automationName, setAutomationName] = useState("")
-  const [keywords, setKeywords] = useState("")
-  const [responseType, setResponseType] = useState<"ai" | "template">("ai")
-
-  const canProceed = () => {
-    if (currentStep === 1) return selectedTrigger !== null
-    if (currentStep === 2) return automationName.trim() !== ""
-    if (currentStep === 3) return responseType !== null
-    return true
+function Slider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  
+  const handleDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!trackRef.current) return
+    const rect = trackRef.current.getBoundingClientRect()
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX
+    const percent = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1)
+    onChange(Math.round(percent * 100))
   }
 
   return (
-    <div className="flex-1 space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 pb-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/automations")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">New Automation</h2>
-          <p className="text-muted-foreground">
-            Set up a new AI-powered reply workflow.
-          </p>
-        </div>
-      </div>
-
-      {/* Stepper */}
-      <nav aria-label="Progress">
-        <ol className="flex items-center gap-2">
-          {steps.map((step, idx) => (
-            <li key={step.id} className="flex items-center gap-2 flex-1">
-              <div
-                className={cn(
-                  "flex items-center justify-center h-8 w-8 rounded-full text-xs font-semibold border-2 transition-all",
-                  currentStep > step.id
-                    ? "bg-primary border-primary text-primary-foreground"
-                    : currentStep === step.id
-                    ? "border-primary text-primary"
-                    : "border-muted-foreground/30 text-muted-foreground"
-                )}
-              >
-                {currentStep > step.id ? <Check className="h-4 w-4" /> : step.id}
-              </div>
-              <div className="hidden sm:block">
-                <p className={cn("text-sm font-medium", currentStep >= step.id ? "text-foreground" : "text-muted-foreground")}>{step.title}</p>
-              </div>
-              {idx < steps.length - 1 && (
-                <div className={cn("flex-1 h-[2px] mx-2", currentStep > step.id ? "bg-primary" : "bg-muted")} />
-              )}
-            </li>
-          ))}
-        </ol>
-      </nav>
-
-      {/* Step Content */}
-      <motion.div
-        key={currentStep}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        transition={{ duration: 0.25 }}
+    <div className="py-4">
+      <div 
+        ref={trackRef}
+        className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full relative cursor-pointer"
+        onMouseDown={(e) => {
+          handleDrag(e)
+          const onMouseMove = (ev: MouseEvent) => handleDrag(ev as any)
+          const onMouseUp = () => {
+            window.removeEventListener('mousemove', onMouseMove)
+            window.removeEventListener('mouseup', onMouseUp)
+          }
+          window.addEventListener('mousemove', onMouseMove)
+          window.addEventListener('mouseup', onMouseUp)
+        }}
       >
-        {currentStep === 1 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Select a trigger</h3>
-            <div className="grid gap-4 md:grid-cols-3">
-              {triggerOptions.map((trigger) => (
-                <Card
-                  key={trigger.id}
-                  className={cn(
-                    "cursor-pointer transition-all hover:shadow-md",
-                    selectedTrigger === trigger.id ? "ring-2 ring-primary border-primary" : ""
-                  )}
-                  onClick={() => setSelectedTrigger(trigger.id)}
-                >
-                  <CardHeader className="space-y-2">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <trigger.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <CardTitle className="text-base">{trigger.label}</CardTitle>
-                    <CardDescription className="text-sm">{trigger.description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {currentStep === 2 && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Set conditions</h3>
-            <Card>
-              <CardContent className="pt-6 space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Automation Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="E.g. Lead Gen - Story Reply"
-                    value={automationName}
-                    onChange={(e) => setAutomationName(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="keywords">Trigger Keywords (comma separated, optional)</Label>
-                  <Input
-                    id="keywords"
-                    placeholder='E.g. "link", "price", "info"'
-                    value={keywords}
-                    onChange={(e) => setKeywords(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">Leave empty to respond to all messages of this type.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {currentStep === 3 && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Choose response method</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card
-                className={cn(
-                  "cursor-pointer transition-all hover:shadow-md",
-                  responseType === "ai" ? "ring-2 ring-primary border-primary" : ""
-                )}
-                onClick={() => setResponseType("ai")}
-              >
-                <CardHeader>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle className="text-base">AI-Generated</CardTitle>
-                  <CardDescription>
-                    Let AI craft a contextual response using your Knowledge Base.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card
-                className={cn(
-                  "cursor-pointer transition-all hover:shadow-md",
-                  responseType === "template" ? "ring-2 ring-primary border-primary" : ""
-                )}
-                onClick={() => setResponseType("template")}
-              >
-                <CardHeader>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
-                    <Zap className="h-5 w-5 text-orange-500" />
-                  </div>
-                  <CardTitle className="text-base">Template Reply</CardTitle>
-                  <CardDescription>
-                    Use a fixed message template for consistent responses.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-          </div>
-        )}
-
-        {currentStep === 4 && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Review your automation</h3>
-            <Card>
-              <CardContent className="pt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Name</span>
-                  <span className="font-medium">{automationName || "Untitled"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Trigger</span>
-                  <Badge variant="outline">{selectedTrigger || "None"}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Keywords</span>
-                  <span className="font-medium">{keywords || "All messages"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Response</span>
-                  <Badge className={responseType === "ai" ? "bg-primary/10 text-primary hover:bg-primary/20" : "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"}>
-                    {responseType === "ai" ? "AI-Generated" : "Template"}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </motion.div>
-
-      {/* Navigation */}
-      <div className="flex items-center justify-between pt-4">
-        <Button
-          variant="outline"
-          onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-          disabled={currentStep === 1}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        {currentStep < 4 ? (
-          <Button
-            onClick={() => setCurrentStep(currentStep + 1)}
-            disabled={!canProceed()}
-          >
-            Next <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        ) : (
-          <Button
-            onClick={() => {
-              // TODO: call create automation API
-              router.push("/automations")
-            }}
-          >
-            <Zap className="mr-2 h-4 w-4" /> Launch Automation
-          </Button>
-        )}
+        <div className="absolute top-0 left-0 h-full bg-indigo-600 rounded-full" style={{ width: `${value}%` }} />
+        <div 
+          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-indigo-600 rounded-full shadow-sm cursor-grab active:cursor-grabbing hover:scale-110 transition-transform"
+          style={{ left: `calc(${value}% - 8px)` }}
+        />
       </div>
+      <div className="flex justify-between text-xs text-muted-foreground mt-2 font-medium">
+        <span>0%</span>
+        <span>25%</span>
+        <span>50%</span>
+        <span>75%</span>
+        <span>100%</span>
+      </div>
+    </div>
+  )
+}
+
+export default function AutomationBuilderPage() {
+  const router = useRouter()
+  
+  const [state, setState] = useState<BuilderState>({
+    automationName: "Real Estate",
+    postSelection: "all",
+    keywordType: "specific",
+    keywords: ["link", "buy", "shop", "promo"],
+    publicReplyEnabled: true,
+    publicReplies: [
+      "Please check the DM",
+      "Thanks! Please see DM",
+      "Sorted! Please check your DM"
+    ],
+    openingMessageEnabled: true,
+    openingMessage: "Hey there! Thank you so much for your interest 🤩 I'm super glad you're here! ✨ Just click below and I'll send you the details in a sec!",
+    buttonLabel: "Send me the details",
+    askToFollowEnabled: false,
+    askToFollowMessage: "Oh no! It appears that you aren't following me 👀. If you would go to my profile and click the follow button, it would mean a lot. After completing that, you will receive the details ✨ when you click the \"I'm following\" button below.",
+    profileButtonLabel: "Visit Profile",
+    imFollowingButtonLabel: "I'm following ✅",
+    finalMessage: "Here is the link as promised! 👇",
+    finalLink: "",
+    finalLinkLabel: "",
+    uploadedImage: null,
+    activeStep: 1,
+    replyRatio: 75,
+  })
+
+  const [editingName, setEditingName] = useState(false)
+  const [newKeyword, setNewKeyword] = useState("")
+  
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
+  const [tempLinkLabel, setTempLinkLabel] = useState("")
+  const [tempLinkUrl, setTempLinkUrl] = useState("")
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('id')
+    if (id) {
+      const saved = localStorage.getItem('replylink_automations')
+      if (saved) {
+        const automations = JSON.parse(saved)
+        const auto = automations.find((a: any) => a.id === id)
+        if (auto && auto.state) {
+          setState(auto.state)
+        }
+      }
+    }
+  }, [])
+  
+  type EmojiTarget = { type: 'publicReply', index: number } | { type: 'openingMessage' } | { type: 'finalMessage' } | { type: 'askToFollowMessage' } | { type: 'profileButtonLabel' } | { type: 'imFollowingButtonLabel' } | { type: 'buttonLabel' } | null
+  const [activeEmojiPicker, setActiveEmojiPicker] = useState<EmojiTarget>(null)
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleGlobalClick = () => setActiveEmojiPicker(null)
+    window.addEventListener('click', handleGlobalClick)
+    return () => window.removeEventListener('click', handleGlobalClick)
+  }, [])
+
+  const updateState = (updates: Partial<BuilderState>) => {
+    setState(s => ({ ...s, ...updates }))
+  }
+
+  return (
+    <div className="flex h-[calc(100vh-theme(spacing.16))] overflow-hidden -mx-6 -mt-6">
+      
+      {/* LEFT COLUMN: Configuration Form */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide relative bg-slate-50/50 dark:bg-background pb-32">
+        <div className="max-w-2xl mx-auto p-8 space-y-8">
+          
+          {/* Header */}
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.push("/automations")} className="shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex flex-col gap-1">
+              <h1 className="text-xl font-bold flex items-center gap-2">
+                Create New Automation
+              </h1>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                Template: <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium"><MessageCircle className="w-3 h-3"/> Auto-DM Links from Comments</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Name Field */}
+          <div className="bg-card border rounded-xl p-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">Automation Name:</span>
+              {editingName ? (
+                <div className="flex items-center gap-2">
+                   <Input 
+                     autoFocus
+                     value={state.automationName}
+                     onChange={e => updateState({ automationName: e.target.value })}
+                     className="h-8 py-1"
+                     onKeyDown={e => e.key === 'Enter' && setEditingName(false)}
+                   />
+                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingName(false)}>
+                     <Check className="w-4 h-4 text-green-600" />
+                   </Button>
+                </div>
+              ) : (
+                <span className="font-medium text-muted-foreground">{state.automationName}</span>
+              )}
+            </div>
+            {!editingName && (
+              <Button size="icon" variant="ghost" onClick={() => setEditingName(true)}>
+                <Edit2 className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            )}
+          </div>
+
+          {/* STEP 1 */}
+          <div 
+            className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 1 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
+            onClick={() => updateState({ activeStep: 1 })}
+          >
+            <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3">
+               <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
+               <div>
+                 <h3 className="font-semibold text-foreground">Select Post or Reel</h3>
+                 <p className="text-sm text-muted-foreground">Choose which posts or reels will trigger this automation</p>
+               </div>
+            </div>
+            <div className="p-4 space-y-3">
+               {['manual', 'all', 'next'].map(opt => (
+                 <div 
+                   key={opt}
+                   onClick={(e) => { e.stopPropagation(); updateState({ postSelection: opt, activeStep: 1 }) }}
+                   className={cn(
+                     "border rounded-lg p-4 cursor-pointer transition-all",
+                     state.postSelection === opt ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/5 ring-1 ring-indigo-500" : "hover:border-slate-300"
+                   )}
+                 >
+                   <div className="flex items-center gap-3">
+                     <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", state.postSelection === opt ? "border-indigo-600" : "border-slate-300")}>
+                        {state.postSelection === opt && <div className="w-2 h-2 bg-indigo-600 rounded-full" />}
+                     </div>
+                     <span className="font-medium text-sm">
+                       {opt === 'manual' ? 'Manually select post or reel' : opt === 'all' ? 'All posts or reels' : 'Next post or reel'}
+                     </span>
+                   </div>
+                   {opt === 'all' && state.postSelection === 'all' && (
+                     <p className="text-xs text-muted-foreground mt-2 ml-7">This automation will work with all your posts and reels.</p>
+                   )}
+                 </div>
+               ))}
+            </div>
+          </div>
+
+          {/* STEP 2 */}
+          <div 
+            className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 2 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
+            onClick={() => updateState({ activeStep: 2 })}
+          >
+            <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3">
+               <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
+               <div>
+                 <h3 className="font-semibold text-foreground">Define Keywords</h3>
+                 <p className="text-sm text-muted-foreground">Add keywords that will trigger this automation when found in comment</p>
+               </div>
+            </div>
+            <div className="p-4 space-y-4">
+               <div 
+                 onClick={() => updateState({ keywordType: 'specific' })}
+                 className={cn("border rounded-lg p-4 cursor-pointer transition-all", state.keywordType === 'specific' ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/5 ring-1 ring-indigo-500" : "")}
+               >
+                 <div className="flex items-center gap-3 mb-4">
+                   <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", state.keywordType === 'specific' ? "border-indigo-600" : "border-slate-300")}>
+                      {state.keywordType === 'specific' && <div className="w-2 h-2 bg-indigo-600 rounded-full" />}
+                   </div>
+                   <span className="font-medium text-sm">Specific keyword(s)</span>
+                 </div>
+                 
+                 {state.keywordType === 'specific' && (
+                   <div className="ml-7 space-y-4">
+                     <div className="flex flex-wrap items-center gap-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 shadow-sm">
+                       {state.keywords.map(kw => (
+                         <div key={kw} className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 px-2 py-1 rounded-md text-sm flex items-center gap-1.5 font-medium">
+                           {kw}
+                           <X 
+                             className="w-3.5 h-3.5 cursor-pointer hover:text-indigo-900 dark:hover:text-indigo-100" 
+                             onClick={() => updateState({ keywords: state.keywords.filter(k => k !== kw) })}
+                           />
+                         </div>
+                       ))}
+                       <input 
+                         placeholder={state.keywords.length === 0 ? "e.g. link, buy, details" : ""}
+                         value={newKeyword}
+                         onChange={e => setNewKeyword(e.target.value)}
+                         className="flex-1 bg-transparent min-w-[120px] outline-none placeholder:text-muted-foreground"
+                         onKeyDown={e => {
+                           if (e.key === 'Enter' && newKeyword.trim()) {
+                             e.preventDefault()
+                             if (!state.keywords.includes(newKeyword.trim())) {
+                               updateState({ keywords: [...state.keywords, newKeyword.trim()] })
+                             }
+                             setNewKeyword("")
+                           } else if (e.key === 'Backspace' && newKeyword === '' && state.keywords.length > 0) {
+                             updateState({ keywords: state.keywords.slice(0, -1) })
+                           }
+                         }}
+                       />
+                     </div>
+                     <p className="text-xs text-muted-foreground mt-1">Hint: Press Enter to add keywords...</p>
+                     
+                     <div className="flex items-center gap-2 text-sm pt-2">
+                       <span className="text-muted-foreground">Examples:</span>
+                       {["link", "buy", "shop", "promo"].map(example => (
+                         <div 
+                           key={example} 
+                           onClick={() => {
+                             if (!state.keywords.includes(example)) {
+                               updateState({ keywords: [...state.keywords, example] })
+                             }
+                           }}
+                           className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-2.5 py-1 rounded-md text-xs cursor-pointer transition-colors text-muted-foreground hover:text-foreground border border-transparent hover:border-slate-300 dark:hover:border-slate-600"
+                         >
+                           {example}
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+               </div>
+
+               <div 
+                 onClick={() => updateState({ keywordType: 'any' })}
+                 className={cn("border rounded-lg p-4 cursor-pointer transition-all", state.keywordType === 'any' ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/5 ring-1 ring-indigo-500" : "")}
+               >
+                 <div className="flex items-center gap-3">
+                   <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", state.keywordType === 'any' ? "border-indigo-600" : "border-slate-300")}>
+                      {state.keywordType === 'any' && <div className="w-2 h-2 bg-indigo-600 rounded-full" />}
+                   </div>
+                   <span className="font-medium text-sm">Any word or comment</span>
+                 </div>
+               </div>
+            </div>
+          </div>
+
+          {/* STEP 3 */}
+          <div 
+            className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 3 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
+            onClick={() => updateState({ activeStep: 3 })}
+          >
+            <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3 items-start justify-between">
+               <div className="flex gap-3">
+                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
+                 <div>
+                   <h3 className="font-semibold text-foreground flex items-center gap-2">Public reply to comments <Info className="w-4 h-4 text-muted-foreground"/></h3>
+                   <p className="text-sm text-muted-foreground">Configure how the automation will respond to comments</p>
+                 </div>
+               </div>
+               <Toggle checked={state.publicReplyEnabled} onChange={v => updateState({ publicReplyEnabled: v })} />
+            </div>
+            
+            {state.publicReplyEnabled && (
+              <div className="p-4 space-y-4">
+                 <div className="space-y-3 relative">
+                    {state.publicReplies.map((reply, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Input 
+                            value={reply}
+                            onChange={(e) => {
+                              const newArr = [...state.publicReplies]
+                              newArr[idx] = e.target.value
+                              updateState({ publicReplies: newArr })
+                            }}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                updateState({ publicReplies: [...state.publicReplies, ""] })
+                              }
+                            }}
+                            className="pr-10 rounded-lg dark:bg-slate-900/50"
+                            placeholder="Type a reply..."
+                          />
+                          <Smile 
+                            className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveEmojiPicker(activeEmojiPicker?.type === 'publicReply' && activeEmojiPicker.index === idx ? null : { type: 'publicReply', index: idx })
+                            }}
+                          />
+                          {activeEmojiPicker?.type === 'publicReply' && activeEmojiPicker.index === idx && (
+                            <div className="absolute right-0 top-full mt-2 z-50 shadow-xl" onClick={e => e.stopPropagation()}>
+                              <EmojiPicker 
+                                onEmojiClick={(emojiData) => {
+                                  const newArr = [...state.publicReplies]
+                                  newArr[idx] = reply + emojiData.emoji
+                                  updateState({ publicReplies: newArr })
+                                }} 
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="shrink-0 text-muted-foreground hover:text-destructive rounded-lg border-input"
+                          onClick={() => {
+                            updateState({ publicReplies: state.publicReplies.filter((_, i) => i !== idx) })
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-dashed rounded-lg bg-transparent hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                      onClick={() => updateState({ publicReplies: [...state.publicReplies, ""] })}
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Add Comment Reply
+                    </Button>
+                 </div>
+
+                 <div className="pt-4 border-t">
+                   <div className="flex items-center gap-2 mb-2">
+                     <span className="font-medium text-sm">Reply Ratio</span>
+                     <Info className="w-4 h-4 text-muted-foreground" />
+                   </div>
+                   <Slider 
+                     value={state.replyRatio}
+                     onChange={(v) => updateState({ replyRatio: v })}
+                   />
+                   <p className="text-xs text-muted-foreground mt-2">Set the percentage of comments that will receive automated replies</p>
+                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* STEP 4 */}
+          <div 
+            className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 4 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
+            onClick={() => updateState({ activeStep: 4 })}
+          >
+            <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3 items-start justify-between">
+               <div className="flex gap-3">
+                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">4</div>
+                 <div>
+                   <h3 className="font-semibold text-foreground flex items-center gap-2">Opening Message <Info className="w-4 h-4 text-muted-foreground"/></h3>
+                   <p className="text-sm text-muted-foreground">This is the first message users see after commenting on your post or reel.</p>
+                 </div>
+               </div>
+               <Toggle checked={state.openingMessageEnabled} onChange={v => updateState({ openingMessageEnabled: v })} />
+            </div>
+            
+            {state.openingMessageEnabled && (
+              <div className="p-4 space-y-4">
+                 <div>
+                   <div className="flex justify-between items-center mb-2">
+                     <span className="font-medium text-sm">Message</span>
+                     <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{state.openingMessage.length} / 1000</span>
+                   </div>
+                   <div className="relative">
+                     <Textarea 
+                       value={state.openingMessage}
+                       onChange={e => updateState({ openingMessage: e.target.value })}
+                       className="min-h-[100px] resize-none pr-10"
+                     />
+                     <Smile 
+                       className="w-4 h-4 absolute right-3 bottom-3 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         setActiveEmojiPicker(activeEmojiPicker?.type === 'openingMessage' ? null : { type: 'openingMessage' })
+                       }}
+                     />
+                     {activeEmojiPicker?.type === 'openingMessage' && (
+                       <div className="absolute right-0 bottom-full mb-2 z-50 shadow-xl" onClick={e => e.stopPropagation()}>
+                         <EmojiPicker onEmojiClick={(emojiData) => updateState({ openingMessage: state.openingMessage + emojiData.emoji })} />
+                       </div>
+                     )}
+                   </div>
+                 </div>
+
+                 <div>
+                   <span className="font-medium text-sm block mb-2">Button label</span>
+                     <div className="relative">
+                       <Input 
+                         value={state.buttonLabel}
+                         onChange={e => updateState({ buttonLabel: e.target.value })}
+                         className="pr-10"
+                       />
+                       <Smile 
+                         className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setActiveEmojiPicker(activeEmojiPicker?.type === 'buttonLabel' ? null : { type: 'buttonLabel' })
+                         }}
+                       />
+                       {activeEmojiPicker?.type === 'buttonLabel' && (
+                         <div className="absolute right-0 top-full mt-2 z-50 shadow-xl" onClick={e => e.stopPropagation()}>
+                           <EmojiPicker onEmojiClick={(emojiData) => updateState({ buttonLabel: state.buttonLabel + emojiData.emoji })} />
+                         </div>
+                       )}
+                     </div>
+                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* STEP 5 */}
+          <div 
+            className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 5 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
+            onClick={() => updateState({ activeStep: 5 })}
+          >
+            <div className="p-4 flex gap-3 items-start justify-between">
+               <div className="flex gap-3">
+                 <div className="w-6 h-6 rounded-full bg-indigo-600/80 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">5</div>
+                 <div>
+                   <h3 className="font-semibold text-foreground flex items-center gap-2">Ask to follow before sending the details <Info className="w-4 h-4 text-muted-foreground"/></h3>
+                   <p className="text-sm text-muted-foreground">Request users to follow your account before sending the details</p>
+                 </div>
+               </div>
+               <Toggle checked={state.askToFollowEnabled} onChange={v => updateState({ askToFollowEnabled: v })} />
+            </div>
+            
+            {state.askToFollowEnabled && (
+              <div className="p-4 border-t space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium text-sm">Message</span>
+                    <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{state.askToFollowMessage.length} / 1000</span>
+                  </div>
+                  <div className="relative">
+                    <Textarea 
+                      value={state.askToFollowMessage}
+                      onChange={e => updateState({ askToFollowMessage: e.target.value })}
+                      className="min-h-[80px] resize-none pr-10"
+                    />
+                    <Smile 
+                      className="w-4 h-4 absolute right-3 bottom-3 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveEmojiPicker(activeEmojiPicker?.type === 'askToFollowMessage' ? null : { type: 'askToFollowMessage' })
+                      }}
+                    />
+                    {activeEmojiPicker?.type === 'askToFollowMessage' && (
+                      <div className="absolute right-0 top-full mt-2 z-50 shadow-xl" onClick={e => e.stopPropagation()}>
+                        <EmojiPicker onEmojiClick={(emojiData) => updateState({ askToFollowMessage: state.askToFollowMessage + emojiData.emoji })} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <span className="font-medium text-sm block mb-2">Profile Button</span>
+                    <div className="relative">
+                      <Input 
+                        value={state.profileButtonLabel} 
+                        onChange={e => updateState({ profileButtonLabel: e.target.value })} 
+                        className="pr-10"
+                      />
+                      <Smile 
+                        className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveEmojiPicker(activeEmojiPicker?.type === 'profileButtonLabel' ? null : { type: 'profileButtonLabel' })
+                        }}
+                      />
+                      {activeEmojiPicker?.type === 'profileButtonLabel' && (
+                        <div className="absolute right-0 top-full mt-2 z-50 shadow-xl" onClick={e => e.stopPropagation()}>
+                          <EmojiPicker onEmojiClick={(emojiData) => updateState({ profileButtonLabel: state.profileButtonLabel + emojiData.emoji })} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-sm block mb-2">Following button</span>
+                    <div className="relative">
+                      <Input 
+                        value={state.imFollowingButtonLabel} 
+                        onChange={e => updateState({ imFollowingButtonLabel: e.target.value })} 
+                        className="pr-10"
+                      />
+                      <Smile 
+                        className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveEmojiPicker(activeEmojiPicker?.type === 'imFollowingButtonLabel' ? null : { type: 'imFollowingButtonLabel' })
+                        }}
+                      />
+                      {activeEmojiPicker?.type === 'imFollowingButtonLabel' && (
+                        <div className="absolute right-0 top-full mt-2 z-50 shadow-xl" onClick={e => e.stopPropagation()}>
+                          <EmojiPicker onEmojiClick={(emojiData) => updateState({ imFollowingButtonLabel: state.imFollowingButtonLabel + emojiData.emoji })} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* STEP 6 */}
+          <div 
+            className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 6 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
+            onClick={() => updateState({ activeStep: 6 })}
+          >
+            <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3 items-start justify-between">
+               <div className="flex gap-3">
+                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">6</div>
+                 <div>
+                   <h3 className="font-semibold text-foreground flex items-center gap-2">Compose Message</h3>
+                   <p className="text-sm text-muted-foreground">Write the message that will be sent to users</p>
+                 </div>
+               </div>
+            </div>
+            <div className="p-4 space-y-4">
+               <div>
+                 <span className="font-medium text-sm block mb-2 text-muted-foreground">Upload an image to include in your message (Optional)</span>
+                 <div 
+                   className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-slate-50 dark:hover:bg-muted/20 cursor-pointer transition-colors relative"
+                   onDragOver={e => e.preventDefault()}
+                   onDrop={e => {
+                     e.preventDefault()
+                     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                       const file = e.dataTransfer.files[0]
+                       if (file.type.startsWith('image/')) {
+                         updateState({ uploadedImage: URL.createObjectURL(file) })
+                       }
+                     }
+                   }}
+                   onClick={() => document.getElementById('image-upload-input')?.click()}
+                 >
+                   <input 
+                     type="file" 
+                     id="image-upload-input" 
+                     className="hidden" 
+                     accept="image/png, image/jpeg" 
+                     onChange={e => {
+                       if (e.target.files && e.target.files[0]) {
+                         updateState({ uploadedImage: URL.createObjectURL(e.target.files[0]) })
+                       }
+                     }} 
+                   />
+                   {state.uploadedImage ? (
+                     <div className="w-full relative group flex items-center justify-center">
+                       <img src={state.uploadedImage} alt="Uploaded" className="max-h-[200px] rounded-md object-contain" />
+                       <div 
+                         className="absolute top-2 right-2 bg-slate-900/60 backdrop-blur-sm text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-900/80 cursor-pointer"
+                         onClick={(e) => {
+                           e.stopPropagation()
+                           updateState({ uploadedImage: null })
+                           const input = document.getElementById('image-upload-input') as HTMLInputElement
+                           if (input) input.value = ''
+                         }}
+                       >
+                         <Trash2 className="w-4 h-4" />
+                       </div>
+                     </div>
+                   ) : (
+                     <>
+                       <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                         <ImageIcon className="w-7 h-7 text-muted-foreground" />
+                       </div>
+                       <span className="text-base font-semibold text-foreground mb-1.5">Click to upload or drag and drop</span>
+                       <span className="text-sm text-muted-foreground">PNG, JPG up to 10MB</span>
+                     </>
+                   )}
+                 </div>
+               </div>
+               
+               <div>
+                 <div className="flex justify-between items-center mb-2">
+                   <span className="font-medium text-sm">Message</span>
+                   <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{state.finalMessage.length} / 1000</span>
+                 </div>
+                 <div className="relative">
+                    <Textarea 
+                      value={state.finalMessage}
+                      onChange={e => updateState({ finalMessage: e.target.value })}
+                      className="min-h-[100px] resize-none pr-10"
+                    />
+                    <Smile 
+                      className="w-4 h-4 absolute right-3 bottom-3 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveEmojiPicker(activeEmojiPicker?.type === 'finalMessage' ? null : { type: 'finalMessage' })
+                      }}
+                    />
+                    {activeEmojiPicker?.type === 'finalMessage' && (
+                      <div className="absolute right-0 bottom-full mb-2 z-50 shadow-xl" onClick={e => e.stopPropagation()}>
+                        <EmojiPicker onEmojiClick={(emojiData) => updateState({ finalMessage: state.finalMessage + emojiData.emoji })} />
+                      </div>
+                    )}
+                 </div>
+                 
+                 <div>
+                   {state.finalLink ? (
+                     <div className="border rounded-lg p-3 flex justify-between items-center bg-background shadow-sm mt-2">
+                       <div className="flex flex-col gap-1">
+                         <a href={state.finalLink.startsWith('http') ? state.finalLink : `https://${state.finalLink}`} target="_blank" className="flex items-center gap-1.5 font-medium text-sm hover:underline cursor-pointer">
+                           {state.finalLinkLabel || 'link'} <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                         </a>
+                         <a href={state.finalLink.startsWith('http') ? state.finalLink : `https://${state.finalLink}`} target="_blank" className="text-xs text-muted-foreground hover:underline">
+                           {state.finalLink}
+                         </a>
+                       </div>
+                       <div className="flex items-center gap-3">
+                         <Edit2 
+                           className="w-4 h-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" 
+                           onClick={() => {
+                             setTempLinkLabel(state.finalLinkLabel || "link")
+                             setTempLinkUrl(state.finalLink)
+                             setIsLinkModalOpen(true)
+                           }}
+                         />
+                         <Trash2 
+                           className="w-4 h-4 text-muted-foreground cursor-pointer hover:text-destructive transition-colors" 
+                           onClick={() => updateState({ finalLink: '', finalLinkLabel: '' })}
+                         />
+                       </div>
+                     </div>
+                   ) : (
+                     <Button 
+                       variant="outline" 
+                       className="w-full mt-2 rounded-lg bg-transparent hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                       onClick={() => {
+                         setTempLinkLabel("")
+                         setTempLinkUrl("")
+                         setIsLinkModalOpen(true)
+                       }}
+                     >
+                       <Plus className="w-4 h-4 mr-2" /> Add Link
+                     </Button>
+                   )}
+                 </div>
+                 
+                 <Dialog open={isLinkModalOpen} onOpenChange={setIsLinkModalOpen}>
+                   <DialogContent className="sm:max-w-[425px]">
+                     <DialogHeader>
+                       <DialogTitle>Add Link</DialogTitle>
+                       <p className="text-sm text-muted-foreground mt-1">Enter a button label and link URL to add a new link.</p>
+                     </DialogHeader>
+                     <div className="grid gap-4 py-4">
+                       <div className="flex flex-col gap-2">
+                         <label className="text-sm font-medium">Button Label <span className="text-destructive">*</span></label>
+                         <Input 
+                           value={tempLinkLabel}
+                           onChange={e => setTempLinkLabel(e.target.value)}
+                           placeholder="e.g., Visit Website" 
+                         />
+                       </div>
+                       <div className="flex flex-col gap-2">
+                         <label className="text-sm font-medium">Button Link <span className="text-destructive">*</span></label>
+                         <Input 
+                           value={tempLinkUrl}
+                           onChange={e => setTempLinkUrl(e.target.value)}
+                           placeholder="e.g., https://example.com" 
+                         />
+                       </div>
+                     </div>
+                     <DialogFooter>
+                       <Button variant="outline" onClick={() => setIsLinkModalOpen(false)}>Cancel</Button>
+                       <Button 
+                         className="bg-indigo-500 hover:bg-indigo-600 text-white" 
+                         disabled={!tempLinkLabel.trim() || !tempLinkUrl.trim()}
+                         onClick={() => {
+                           updateState({ finalLink: tempLinkUrl, finalLinkLabel: tempLinkLabel })
+                           setIsLinkModalOpen(false)
+                         }}
+                       >
+                         Save
+                       </Button>
+                     </DialogFooter>
+                   </DialogContent>
+                 </Dialog>
+               </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Sticky Action Bar */}
+        <div className="fixed bottom-0 left-0 lg:left-64 right-0 lg:right-[400px] xl:right-[500px] bg-background/80 backdrop-blur-md border-t p-4 z-50 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+           <div className="max-w-2xl mx-auto flex gap-4">
+             <Button 
+               variant="outline" 
+               className="flex-1 bg-background hover:bg-slate-50"
+               onClick={() => {
+                 const params = new URLSearchParams(window.location.search)
+                 const editId = params.get('id')
+                 const saved = localStorage.getItem('replylink_automations')
+                 const automations = saved ? JSON.parse(saved) : []
+                 
+                 if (editId) {
+                   const idx = automations.findIndex((a: any) => a.id === editId)
+                   if (idx !== -1) {
+                     automations[idx] = {
+                       ...automations[idx],
+                       name: state.automationName || "link",
+                       modified: "Just now",
+                       state: state
+                     }
+                   }
+                 } else {
+                   automations.unshift({
+                     id: Date.now().toString(),
+                     name: state.automationName || "link",
+                     badge: "Auto DM Links from Comments",
+                     runs: 0,
+                     ctr: 0,
+                     modified: "Just now",
+                     lastRun: "-",
+                     status: "Draft",
+                     state: state
+                   })
+                 }
+                 localStorage.setItem('replylink_automations', JSON.stringify(automations))
+                 router.push('/automations')
+               }}
+             >
+               Save as Draft
+             </Button>
+             <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
+               <Play className="w-4 h-4 mr-2" /> Activate
+             </Button>
+           </div>
+         </div>
+      </div>
+
+      {/* RIGHT COLUMN: Phone Preview */}
+      <div className="hidden lg:flex w-[400px] xl:w-[500px] bg-slate-100/50 dark:bg-[#090E17] border-l items-center justify-center relative p-8">
+        {/* Glow effect */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none" />
+        <PhonePreview state={state} />
+      </div>
+
     </div>
   )
 }

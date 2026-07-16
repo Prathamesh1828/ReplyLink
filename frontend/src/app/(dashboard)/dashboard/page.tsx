@@ -20,32 +20,28 @@ export const metadata: Metadata = {
 
 const stats = [
   {
-    title: "Messages Processed",
-    value: "14,231",
-    change: "+20.1%",
-    icon: MessageCircle,
-    trend: "up"
-  },
-  {
-    title: "Leads Captured",
-    value: "842",
-    change: "+15.2%",
-    icon: Users,
-    trend: "up"
-  },
-  {
-    title: "Automation CTR",
-    value: "12.4%",
-    change: "+4.1%",
-    icon: MousePointerClick,
-    trend: "up"
-  },
-  {
-    title: "Active Automations",
+    title: "Total Automations",
     value: "12",
-    change: "0%",
+    description: "Total automations created by the user.",
     icon: Wand2,
-    trend: "neutral"
+  },
+  {
+    title: "Messages Sent",
+    value: "14,231",
+    description: "Total Instagram DMs successfully sent by ReplyLink automations.",
+    icon: MessageCircle,
+  },
+  {
+    title: "Conversations Started",
+    value: "3,102",
+    description: "Total conversations where a contact replied after receiving an automated DM.",
+    icon: Users,
+  },
+  {
+    title: "Link Clicks",
+    value: "1,452",
+    description: "Total tracked clicks on links sent through ReplyLink automations.",
+    icon: MousePointerClick,
   },
 ]
 
@@ -82,9 +78,8 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className={`text-xs flex items-center ${stat.trend === 'up' ? 'text-green-500' : 'text-muted-foreground'}`}>
-                {stat.trend === 'up' && <ArrowUpRight className="h-3 w-3 mr-1" />}
-                {stat.change} from last month
+              <p className="text-xs text-muted-foreground mt-1">
+                {stat.description}
               </p>
             </CardContent>
           </Card>
