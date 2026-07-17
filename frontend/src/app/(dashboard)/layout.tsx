@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Sidebar } from "@/components/dashboard/sidebar"
 import { TopNav } from "@/components/dashboard/top-nav"
 import { motion, AnimatePresence } from "framer-motion"
@@ -11,13 +10,12 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <div className="hidden lg:block h-full">
-         <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+         <Sidebar />
       </div>
       
       <div className="flex flex-1 flex-col overflow-hidden">

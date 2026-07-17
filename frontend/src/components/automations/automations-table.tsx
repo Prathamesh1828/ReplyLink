@@ -15,10 +15,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, ChevronDown, MessageCircle, ArrowDown, ArrowUpDown, Edit } from "lucide-react"
+import { Search, ChevronDown, MessageCircle, ArrowDown, ArrowUpDown, Edit, Trash2 } from "lucide-react"
+import { Instagram } from "@/components/icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
@@ -38,6 +47,7 @@ const dummyAutomations = [
 
 export function AutomationsTable() {
   const [search, setSearch] = useState("")
+  const [automationToDelete, setAutomationToDelete] = useState<{id: string, name: string} | null>(null)
   const [automations, setAutomations] = useState<{
     id: string;
     name: string;
@@ -50,13 +60,27 @@ export function AutomationsTable() {
   }[]>([])
 
   useEffect(() => {
-    const saved = localStorage.getItem('replylink_automations')
-    if (saved) {
-      setAutomations(JSON.parse(saved))
-    } else {
-      setAutomations(dummyAutomations)
-      localStorage.setItem('replylink_automations', JSON.stringify(dummyAutomations))
-    }
+    fetch("http://127.0.0.1:8000/api/automations/")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const mapped = data.map(item => ({
+            id: item.id,
+            name: item.name || "link",
+            badge: "Auto DM Links from Comments",
+            runs: item.runs_count || 0,
+            ctr: item.clicks_count || 0,
+            modified: item.updated_at ? new Date(item.updated_at).toLocaleDateString() : "Just now",
+            lastRun: "-",
+            status: item.status || "active"
+          }))
+          setAutomations(mapped)
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load automations", err)
+        setAutomations(dummyAutomations)
+      })
   }, [])
 
   const router = useRouter()
@@ -65,17 +89,72 @@ export function AutomationsTable() {
     a.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleAction = (action: string, id: string) => {
+  const toggleStatus = async (id: string, currentStatus: string) => {
+    if (id.startsWith('auto_')) {
+      setAutomations(automations.map(a => 
+        a.id === id ? { ...a, status: currentStatus === 'Active' ? 'Inactive' : 'Active' } : a
+      ))
+      return;
+    }
+
+    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/automations/${id}`, {
+        method: 'PUT',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus, active: newStatus === 'Active' })
+      });
+      if (res.ok) {
+        setAutomations(automations.map(a => a.id === id ? { ...a, status: newStatus } : a))
+        if (newStatus === 'Active') {
+          toast.success("Automation activated")
+        } else {
+          toast.error("Automation deactivated")
+        }
+      } else {
+        toast.error("Failed to update status")
+      }
+    } catch (err) {
+      toast.error("Failed to update status")
+    }
+  }
+
+  const handleAction = async (action: string, id: string) => {
     if (action === 'edit') {
       router.push(`/automations/builder?id=${id}`)
     } else if (action === 'delete') {
-      const updated = automations.filter(a => a.id !== id)
-      setAutomations(updated)
-      localStorage.setItem('replylink_automations', JSON.stringify(updated))
-      toast.success("Automation deleted successfully")
+      const automation = automations.find(a => a.id === id)
+      if (automation) {
+        setAutomationToDelete({ id, name: automation.name })
+      }
     } else {
       toast.success(`Action '${action}' triggered for ${id}`)
     }
+  }
+
+  const confirmDelete = async () => {
+    if (!automationToDelete) return
+    const id = automationToDelete.id
+    
+    if (id.startsWith('auto_')) {
+      setAutomations(automations.filter(a => a.id !== id))
+      toast.success("Automation deleted successfully")
+      setAutomationToDelete(null)
+      return
+    }
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/automations/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setAutomations(automations.filter(a => a.id !== id))
+        toast.success("Automation deleted successfully")
+      } else {
+        toast.error("Failed to delete automation")
+      }
+    } catch (err) {
+      console.error("Failed to delete", err)
+      toast.error("Failed to delete automation")
+    }
+    setAutomationToDelete(null)
   }
 
   return (
@@ -129,7 +208,7 @@ export function AutomationsTable() {
                       <div className="flex flex-col gap-1">
                         <span className="font-medium text-foreground">{item.name}</span>
                         <Badge variant="secondary" className="bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-500/20 rounded-full px-2 py-0 text-xs font-medium w-fit flex items-center gap-1">
-                          <MessageCircle className="h-3 w-3" />
+                          <Instagram className="h-3 w-3" />
                           {item.badge}
                         </Badge>
                       </div>
@@ -143,37 +222,47 @@ export function AutomationsTable() {
                     {item.status === "Draft" ? (
                       <Badge className="font-medium bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-none px-3">Draft</Badge>
                     ) : (
-                      <div className={cn(
+                      <div 
+                        onClick={() => toggleStatus(item.id, item.status)}
+                        className={cn(
                         "w-10 h-5 rounded-full flex items-center px-0.5 cursor-pointer transition-colors",
-                        item.status === 'active' ? "bg-indigo-600 dark:bg-indigo-500" : "bg-slate-300 dark:bg-slate-700"
+                        item.status === 'Active' ? "bg-indigo-600 dark:bg-indigo-500" : "bg-slate-300 dark:bg-slate-700"
                       )}>
                         <div className={cn(
                           "w-4 h-4 bg-white rounded-full transition-transform shadow-sm",
-                          item.status === 'active' ? "translate-x-5" : "translate-x-0"
+                          item.status === 'Active' ? "translate-x-5" : "translate-x-0"
                         )} />
                       </div>
                     )}
                   </TableCell>
                   <TableCell className="text-right pr-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button variant="outline" className="h-8 shadow-sm">
-                            <Edit className="h-3.5 w-3.5 mr-2" />
-                            Edit
-                            <ChevronDown className="h-3.5 w-3.5 ml-2 text-muted-foreground" />
-                          </Button>
-                        }
-                      />
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleAction('edit', item.id)}>
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAction('delete', item.id)}>
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-end">
+                      <div className="flex items-center border rounded-md shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
+                        <Button 
+                          variant="ghost" 
+                          className="h-8 px-3 rounded-none hover:bg-slate-50 dark:hover:bg-slate-800"
+                          onClick={() => handleAction('edit', item.id)}
+                        >
+                          <Edit className="h-4 w-4 mr-2 text-slate-700 dark:text-slate-300" />
+                          <span className="font-medium text-blue-600 dark:text-blue-500">Edit</span>
+                        </Button>
+                        <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 px-2 rounded-none hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                            <ChevronDown className="h-4 w-4 text-slate-700 dark:text-slate-300" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-32 min-w-0">
+                            <DropdownMenuItem 
+                              onClick={() => handleAction('delete', item.id)}
+                              className="text-red-600 dark:text-red-500 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-500/10 cursor-pointer font-medium"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -181,6 +270,25 @@ export function AutomationsTable() {
           </TableBody>
         </Table>
       </div>
+      
+      <Dialog open={!!automationToDelete} onOpenChange={(open) => !open && setAutomationToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Automation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{automationToDelete?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button variant="outline" onClick={() => setAutomationToDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

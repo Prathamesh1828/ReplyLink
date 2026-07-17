@@ -3,8 +3,12 @@ import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.knowledge import router as knowledge_router
+from app.api.automations import router as automations_router
+from app.api.auth import router as auth_router
+from app.api.accounts import router as accounts_router
 
 # --------------------------------------------------
 # Load Environment Variables
@@ -23,11 +27,23 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Enable CORS for the frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # --------------------------------------------------
 # Register API Routers
 # --------------------------------------------------
 
 app.include_router(knowledge_router)
+app.include_router(automations_router)
+app.include_router(auth_router)
+app.include_router(accounts_router)
 
 # --------------------------------------------------
 # Sample Automations (Temporary)
@@ -49,6 +65,52 @@ def home():
     return {
         "status": "ReplyLink Running"
     }
+
+@app.get("/subscribe-pages")
+def subscribe_pages():
+    """Manually subscribe all connected Facebook Pages to the app's webhooks."""
+    from app.services.supabase_service import supabase
+    from app.services.meta_service import meta_service
+    
+    accounts = supabase.table("connected_accounts").select("*").eq("active", True).execute()
+    results = []
+    
+    for acc in accounts.data:
+        page_id = acc.get("facebook_page_id")
+        token = acc.get("page_access_token")
+        ig_id = acc.get("instagram_account_id")
+        
+        if page_id and token:
+            url = f"https://graph.facebook.com/v19.0/{page_id}/subscribed_apps"
+            params = {
+                "subscribed_fields": "feed",
+                "access_token": token
+            }
+            import httpx
+            with httpx.Client() as client:
+                response = client.post(url, params=params)
+                if response.status_code == 200 and response.json().get("success"):
+                    results.append({
+                        "page_id": page_id,
+                        "ig_id": ig_id,
+                        "subscribed": True
+                    })
+                else:
+                    results.append({
+                        "page_id": page_id,
+                        "ig_id": ig_id,
+                        "subscribed": False,
+                        "error": response.text
+                    })
+        else:
+            results.append({
+                "page_id": page_id,
+                "ig_id": ig_id,
+                "subscribed": False,
+                "error": "Missing page_id or token"
+            })
+    
+    return {"results": results}
 
 # --------------------------------------------------
 # Meta Webhook Verification
@@ -94,75 +156,10 @@ async def receive_webhook(request: Request):
     print("=" * 60)
 
     try:
-
-        entries = payload.get("entry", [])
-
-        for entry in entries:
-
-            changes = entry.get("changes", [])
-
-            for change in changes:
-
-                field = change.get("field")
-
-                # --------------------------------------
-                # Comment Event
-                # --------------------------------------
-
-                if field == "comments":
-
-                    value = change.get("value", {})
-
-                    username = (
-                        value.get("from", {})
-                        .get("username", "Unknown")
-                    )
-
-                    comment_text = value.get("text", "")
-
-                    print("\nNEW COMMENT RECEIVED")
-                    print("User:", username)
-                    print("Comment:", comment_text)
-
-                    keyword = comment_text.strip().upper()
-
-                    if keyword in KEYWORDS:
-
-                        response_message = KEYWORDS[keyword]
-
-                        print("\nMATCH FOUND")
-                        print("Keyword:", keyword)
-                        print("Response:", response_message)
-
-                        # TODO:
-                        # Replace with Automation Service
-                        # automation_service.handle_comment(...)
-
-                    else:
-
-                        print("\nNO AUTOMATION FOUND")
-
-                # --------------------------------------
-                # Message Event
-                # --------------------------------------
-
-                elif field == "messages":
-
-                    print("\nMESSAGE EVENT RECEIVED")
-
-                    print(
-                        json.dumps(
-                            change,
-                            indent=2
-                        )
-                    )
-
-                    # TODO:
-                    # Replace with FAQ Service
-                    # faq_service.handle_message(...)
+        from app.handlers.webhook_handler import webhook_handler
+        webhook_handler.handle_instagram_webhook(payload)
 
     except Exception as e:
-
         print("\nERROR PROCESSING WEBHOOK")
         print(str(e))
 

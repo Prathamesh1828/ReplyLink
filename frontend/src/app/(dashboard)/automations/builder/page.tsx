@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Play, X, Plus, Sparkles, MessageCircle, Info, Image as ImageIcon, Link as LinkIcon, Smile, Trash2, Edit2, Check, ExternalLink } from "lucide-react"
+import { ArrowLeft, Play, X, Plus, Sparkles, MessageCircle, Info, Image as ImageIcon, Link as LinkIcon, Smile, Trash2, Edit2, Check, ExternalLink, Loader2 } from "lucide-react"
+import { Instagram } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -99,6 +100,7 @@ export default function AutomationBuilderPage() {
     uploadedImage: null,
     activeStep: 1,
     replyRatio: 75,
+    selectedPostIds: [],
   })
 
   const [editingName, setEditingName] = useState(false)
@@ -112,14 +114,14 @@ export default function AutomationBuilderPage() {
     const params = new URLSearchParams(window.location.search)
     const id = params.get('id')
     if (id) {
-      const saved = localStorage.getItem('replylink_automations')
-      if (saved) {
-        const automations = JSON.parse(saved)
-        const auto = automations.find((a: any) => a.id === id)
-        if (auto && auto.state) {
-          setState(auto.state)
-        }
-      }
+      fetch(`http://127.0.0.1:8000/api/automations/${id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.config) {
+            setState(data.config)
+          }
+        })
+        .catch(err => console.error("Failed to load automation:", err))
     }
   }, [])
   
@@ -136,6 +138,24 @@ export default function AutomationBuilderPage() {
   const updateState = (updates: Partial<BuilderState>) => {
     setState(s => ({ ...s, ...updates }))
   }
+
+  const [media, setMedia] = useState<any[]>([])
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false)
+
+  useEffect(() => {
+    if (state.postSelection === 'manual' && media.length === 0 && !isLoadingMedia) {
+      setIsLoadingMedia(true)
+      fetch('http://127.0.0.1:8000/api/auth/meta/media')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.media) {
+            setMedia(data.media)
+          }
+        })
+        .catch(err => console.error("Failed to load media:", err))
+        .finally(() => setIsLoadingMedia(false))
+    }
+  }, [state.postSelection])
 
   return (
     <div className="flex h-[calc(100vh-theme(spacing.16))] overflow-hidden -mx-6 -mt-6">
@@ -154,7 +174,7 @@ export default function AutomationBuilderPage() {
                 Create New Automation
               </h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                Template: <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium"><MessageCircle className="w-3 h-3"/> Auto-DM Links from Comments</span>
+                Template: <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium"><Instagram className="w-3 h-3"/> Auto-DM Links from Comments</span>
               </div>
             </div>
           </div>
@@ -219,6 +239,57 @@ export default function AutomationBuilderPage() {
                    </div>
                    {opt === 'all' && state.postSelection === 'all' && (
                      <p className="text-xs text-muted-foreground mt-2 ml-7">This automation will work with all your posts and reels.</p>
+                   )}
+                   {opt === 'manual' && state.postSelection === 'manual' && (
+                     <div className="mt-4 ml-7">
+                       {isLoadingMedia ? (
+                         <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                           <Loader2 className="w-4 h-4 animate-spin" /> Fetching your Instagram posts...
+                         </div>
+                       ) : media.length > 0 ? (
+                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                           {media.map((item: any) => {
+                             const isSelected = state.selectedPostIds.includes(item.id)
+                             return (
+                               <div 
+                                 key={item.id}
+                                 onClick={(e) => {
+                                   e.stopPropagation()
+                                   const newIds = isSelected 
+                                     ? state.selectedPostIds.filter(id => id !== item.id)
+                                     : [...state.selectedPostIds, item.id]
+                                   updateState({ selectedPostIds: newIds })
+                                 }}
+                                 className={cn(
+                                   "relative aspect-square rounded-md overflow-hidden cursor-pointer group border-2 transition-all",
+                                   isSelected ? "border-indigo-600" : "border-transparent hover:border-indigo-300"
+                                 )}
+                               >
+                                 <img 
+                                   src={item.thumbnail_url || item.media_url} 
+                                   alt={item.caption || "Instagram Post"} 
+                                   className="w-full h-full object-cover"
+                                 />
+                                 <div className="absolute top-1 right-1 bg-black/60 rounded px-1.5 py-0.5 text-[10px] text-white font-medium">
+                                   {item.media_type === 'VIDEO' ? '🎥' : item.media_type === 'CAROUSEL_ALBUM' ? '📚' : '🖼'}
+                                 </div>
+                                 {isSelected && (
+                                   <div className="absolute inset-0 bg-indigo-600/20 flex items-center justify-center backdrop-blur-[1px]">
+                                     <div className="bg-indigo-600 text-white rounded-full p-1 shadow-md">
+                                       <Check className="w-4 h-4" />
+                                     </div>
+                                   </div>
+                                 )}
+                               </div>
+                             )
+                           })}
+                         </div>
+                       ) : (
+                         <div className="text-sm text-muted-foreground py-4 bg-slate-50 dark:bg-slate-900 rounded-md px-3 border border-dashed">
+                           No recent posts found on your connected Instagram account.
+                         </div>
+                       )}
+                     </div>
                    )}
                  </div>
                ))}
@@ -758,42 +829,66 @@ export default function AutomationBuilderPage() {
              <Button 
                variant="outline" 
                className="flex-1 bg-background hover:bg-slate-50"
-               onClick={() => {
+               onClick={async () => {
                  const params = new URLSearchParams(window.location.search)
                  const editId = params.get('id')
-                 const saved = localStorage.getItem('replylink_automations')
-                 const automations = saved ? JSON.parse(saved) : []
                  
-                 if (editId) {
-                   const idx = automations.findIndex((a: any) => a.id === editId)
-                   if (idx !== -1) {
-                     automations[idx] = {
-                       ...automations[idx],
-                       name: state.automationName || "link",
-                       modified: "Just now",
-                       state: state
-                     }
-                   }
-                 } else {
-                   automations.unshift({
-                     id: Date.now().toString(),
-                     name: state.automationName || "link",
-                     badge: "Auto DM Links from Comments",
-                     runs: 0,
-                     ctr: 0,
-                     modified: "Just now",
-                     lastRun: "-",
-                     status: "Draft",
-                     state: state
-                   })
+                 const payload = {
+                   name: state.automationName || "link",
+                   status: "Draft",
+                   config: state,
+                   active: false
                  }
-                 localStorage.setItem('replylink_automations', JSON.stringify(automations))
-                 router.push('/automations')
+                 
+                 try {
+                   const method = editId ? "PUT" : "POST"
+                   const url = editId 
+                     ? `http://127.0.0.1:8000/api/automations/${editId}` 
+                     : `http://127.0.0.1:8000/api/automations/`
+                     
+                   const res = await fetch(url, {
+                     method,
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify(payload)
+                   })
+                   if (res.ok) router.push('/automations')
+                 } catch (err) {
+                   console.error("Failed to save automation", err)
+                 }
                }}
              >
                Save as Draft
              </Button>
-             <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
+             <Button 
+               className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+               onClick={async () => {
+                 const params = new URLSearchParams(window.location.search)
+                 const editId = params.get('id')
+                 
+                 const payload = {
+                   name: state.automationName || "link",
+                   status: "Active",
+                   config: state,
+                   active: true
+                 }
+                 
+                 try {
+                   const method = editId ? "PUT" : "POST"
+                   const url = editId 
+                     ? `http://127.0.0.1:8000/api/automations/${editId}` 
+                     : `http://127.0.0.1:8000/api/automations/`
+                     
+                   const res = await fetch(url, {
+                     method,
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify(payload)
+                   })
+                   if (res.ok) router.push('/automations')
+                 } catch (err) {
+                   console.error("Failed to save automation", err)
+                 }
+               }}
+             >
                <Play className="w-4 h-4 mr-2" /> Activate
              </Button>
            </div>

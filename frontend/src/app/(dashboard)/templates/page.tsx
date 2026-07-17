@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sparkles, MessageCircle, PlusCircle, MessageSquare, Bot, UserPlus, AtSign, ArrowRight } from "lucide-react"
+import { Instagram } from "@/components/icons"
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ const templates = [
     description: "Automatically send a DM with your configured message and link when someone comments using a configured keyword.",
     status: "active",
     iconClass: "bg-gradient-to-br from-blue-400 to-blue-600",
-    IconComponent: MessageCircle,
+    IconComponent: Instagram,
   },
   {
     id: "t_2",

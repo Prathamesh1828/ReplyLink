@@ -37,12 +37,12 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/forgot-password') ||
     request.nextUrl.pathname.startsWith('/auth')
 
-  // BYPASS LOGIN: Commented out so user can test the app without authenticating
-  // if (!user && !isAuthRoute && request.nextUrl.pathname !== '/') {
-  //   const url = request.nextUrl.clone()
-  //   url.pathname = '/login'
-  //   return NextResponse.redirect(url)
-  // }
+  // Redirect unauthenticated users to login
+  if (!user && !isAuthRoute && request.nextUrl.pathname !== '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
 
   if (user && (isAuthRoute || request.nextUrl.pathname === '/')) {
     // If logged in and on auth route or root, redirect to dashboard

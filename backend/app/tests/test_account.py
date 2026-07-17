@@ -1,9 +1,10 @@
-from app.services.account_service import (
-    get_account_by_instagram_id,
+from app.services.account_service import account_service
+
+account = account_service.get_account_by_instagram_id(
+    instagram_account_id="17841470222526799"
 )
 
-account = get_account_by_instagram_id(
-    "17841400000000000"
-)
-
-print(account)
+if account:
+    print(account)
+else:
+    print("No account found.")

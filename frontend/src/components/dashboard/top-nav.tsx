@@ -24,26 +24,13 @@ export function TopNav() {
           <SheetContent side="left" className="p-0 w-[240px]">
              <SheetTitle className="sr-only">Menu</SheetTitle>
              <SheetDescription className="sr-only">Sidebar navigation menu</SheetDescription>
-            <Sidebar isCollapsed={false} setIsCollapsed={() => {}} />
+            <Sidebar />
           </SheetContent>
         </Sheet>
       </div>
       
       <div className="flex flex-1 items-center justify-end space-x-4">
-        <div className="w-full max-w-sm ml-auto mr-4 relative hidden sm:block">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search..."
-            className="pl-8 bg-muted/50 border-none focus-visible:ring-1 h-9 rounded-full"
-          />
-        </div>
-        
         <div className="flex items-center gap-2">
-           <Button variant="default" size="sm" className="hidden sm:flex h-8 rounded-full px-4">
-             <Plus className="mr-2 h-4 w-4" />
-             Create
-           </Button>
            <ThemeToggle />
            <UserNav />
         </div>

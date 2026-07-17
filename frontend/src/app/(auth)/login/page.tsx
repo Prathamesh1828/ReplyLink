@@ -8,11 +8,11 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="w-full flex flex-col space-y-6">
-      <div className="flex flex-col space-y-2 text-center lg:text-left">
-        <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">
-          Enter your email and password to access your workspace.
+    <div className="w-full flex flex-col space-y-8">
+      <div className="flex flex-col space-y-2 text-center">
+        <h1 className="text-[28px] font-bold tracking-tight text-white">Welcome back</h1>
+        <p className="text-[15px] text-slate-400">
+          Sign in to manage your Instagram automations.
         </p>
       </div>
       <LoginForm />

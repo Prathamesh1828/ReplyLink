@@ -1,81 +1,15 @@
-from app.services.supabase_service import supabase
+from typing import Optional, Dict, Any
+from app.repositories.account_repository import account_repository
 
+class AccountService:
+    @staticmethod
+    def get_account_by_instagram_id(instagram_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch the active account linked to the provided Instagram ID."""
+        return account_repository.get_by_instagram_id(instagram_id)
 
-def get_account_by_instagram_id(
-    instagram_account_id: str
-):
-    """
-    Returns the connected account
-    for an Instagram Business Account.
-    """
+    @staticmethod
+    def get_account_by_page_id(page_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch the active account linked to the provided Facebook Page ID."""
+        return account_repository.get_by_page_id(page_id)
 
-    response = (
-        supabase
-        .table("connected_accounts")
-        .select("*")
-        .eq(
-            "instagram_account_id",
-            instagram_account_id
-        )
-        .eq("active", True)
-        .limit(1)
-        .execute()
-    )
-
-    if response.data:
-        return response.data[0]
-
-    return None
-
-
-def get_account_by_page_id(
-    facebook_page_id: str
-):
-    """
-    Returns the connected account
-    for a Facebook Page.
-    """
-
-    response = (
-        supabase
-        .table("connected_accounts")
-        .select("*")
-        .eq(
-            "facebook_page_id",
-            facebook_page_id
-        )
-        .eq("active", True)
-        .limit(1)
-        .execute()
-    )
-
-    if response.data:
-        return response.data[0]
-
-    return None
-
-
-def get_page_access_token(
-    user_id: str
-):
-    """
-    Returns the page access token
-    for a ReplyLink user.
-    """
-
-    response = (
-        supabase
-        .table("connected_accounts")
-        .select("page_access_token")
-        .eq("user_id", user_id)
-        .eq("active", True)
-        .limit(1)
-        .execute()
-    )
-
-    if response.data:
-        return response.data[0][
-            "page_access_token"
-        ]
-
-    return None
+account_service = AccountService()

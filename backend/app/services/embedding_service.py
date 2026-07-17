@@ -3,7 +3,8 @@ from sentence_transformers import SentenceTransformer
 print("Loading BGE Base model...")
 
 model = SentenceTransformer(
-    "BAAI/bge-base-en-v1.5"
+    "BAAI/bge-base-en-v1.5",
+    local_files_only=True
 )
 
 

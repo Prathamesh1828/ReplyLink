@@ -1,9 +1,9 @@
 import { Metadata } from "next"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { OverviewCharts } from "@/components/dashboard/overview-charts"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import {
-  MessageCircle,
   MousePointerClick,
   Users,
   Wand2,
@@ -11,7 +11,8 @@ import {
   ArrowUpRight,
   Plus
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Instagram } from "@/components/icons"
+import { Button, buttonVariants } from "@/components/ui/button"
 
 export const metadata: Metadata = {
   title: "Dashboard | ReplyLink",
@@ -29,7 +30,7 @@ const stats = [
     title: "Messages Sent",
     value: "14,231",
     description: "Total Instagram DMs successfully sent by ReplyLink automations.",
-    icon: MessageCircle,
+    icon: Instagram,
   },
   {
     title: "Conversations Started",
@@ -56,10 +57,10 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button>
-            <Camera className="mr-2 h-4 w-4" />
+          <Link href="/instagram" className={buttonVariants({ variant: "default" })}>
+            <Instagram className="mr-2 h-4 w-4" />
             Connect Account
-          </Button>
+          </Link>
           <Button variant="outline">
             <Plus className="mr-2 h-4 w-4" />
             New Automation

@@ -23,6 +23,7 @@ export interface BuilderState {
   uploadedImage: string | null
   activeStep: number // 1 to 6
   replyRatio: number
+  selectedPostIds: string[]
 }
 
 export function PhonePreview({ state }: { state: BuilderState }) {

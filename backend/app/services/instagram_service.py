@@ -1,7 +1,15 @@
-def send_dm(instagram_user: str, message: str):
+from app.services.account_service import account_service
+
+def send_dm(instagram_user: str, message: str, instagram_business_id: str = None):
     """
     Send a plain text DM.
     """
+    if instagram_business_id:
+        token = account_service.get_page_access_token(instagram_business_id)
+        if token:
+            print(f"[Graph API] Using dynamic token ending in ...{token[-5:]} for account {instagram_business_id}")
+        else:
+            print(f"[Graph API Error] No active token found for {instagram_business_id}")
 
     print("\n========== DM SENT ==========")
     print(f"User: {instagram_user}")
