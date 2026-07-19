@@ -232,7 +232,7 @@ class MetaService:
         """Fetches the user's Instagram media (posts, reels, carousels)."""
         url = f"{MetaService.BASE_URL}/{instagram_id}/media"
         params = {
-            "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp",
+            "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count",
             "access_token": access_token,
             "limit": 50 # Fetch up to 50 recent posts
         }
@@ -249,7 +249,7 @@ class MetaService:
         """Fetches the user's active Instagram stories (last 24 hours)."""
         url = f"{MetaService.BASE_URL}/{instagram_id}/stories"
         params = {
-            "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp",
+            "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count",
             "access_token": access_token,
             "limit": 50
         }

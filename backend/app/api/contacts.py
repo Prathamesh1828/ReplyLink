@@ -33,22 +33,23 @@ async def get_contacts(x_user_id: Optional[str] = Header(None)):
         if not username:
             continue
             
+        auto_type = automation_types.get(run["automation_id"])
+        if auto_type == "auto_dm_comments":
+            run_source = "Comment"
+        elif auto_type == "auto_reply_story":
+            run_source = "Story Reply"
+        elif auto_type in ["auto_reply_dm", "dm_reply"]:
+            run_source = "DM"
+        else:
+            run_source = "Unknown"
+            
         if username not in contacts_map:
-            # Determine source based on automation type
-            auto_type = automation_types.get(run["automation_id"])
-            if auto_type == "auto_dm_comments":
-                source = "Comment"
-            elif auto_type == "auto_reply_story":
-                source = "Story Reply"
-            else:
-                source = "Unknown"
-                
             contacts_map[username] = {
                 "id": username,
                 "name": username,
                 "handle": f"@{username}",
                 "email": None,
-                "source": source,
+                "source": run_source, # Primary source is their first contact
                 "status": "lead",
                 "firstContact": run.get("created_at"),
                 "lastActive": run.get("created_at"),
@@ -65,14 +66,20 @@ async def get_contacts(x_user_id: Optional[str] = Header(None)):
         # Timeline events
         status_msg = run.get('status', 'unknown')
         if run.get("comment"):
-            text = f"Commented: \"{run.get('comment')}\""
+            if run_source == "DM":
+                text = f"Sent DM: \"{run.get('comment')}\""
+            elif run_source == "Story Reply":
+                text = f"Replied to Story: \"{run.get('comment')}\""
+            else:
+                text = f"Commented: \"{run.get('comment')}\""
         else:
             text = f"Automation run ({status_msg})"
             
         timeline_entry = {
             "type": "captured" if status_msg == "success" else "dm_received", 
             "text": text, 
-            "time": run.get("created_at")
+            "time": run.get("created_at"),
+            "source": run_source
         }
         contacts_map[username]["timeline"].append(timeline_entry)
         

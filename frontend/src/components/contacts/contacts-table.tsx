@@ -136,6 +136,7 @@ export function ContactsTable() {
                 <DropdownMenuItem onClick={() => setSourceFilter("All")}>All Sources</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSourceFilter("Comment")}>Comment</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSourceFilter("Story Reply")}>Story Reply</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSourceFilter("DM")}>DM</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

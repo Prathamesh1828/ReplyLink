@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sparkles, MessageCircle, PlusCircle, MessageSquare, MessagesSquare, Bot, UserPlus, AtSign, ArrowRight } from "lucide-react"
 import { Instagram } from "@/components/icons"
@@ -121,10 +121,11 @@ export default function TemplatesPage() {
               </CardContent>
               <CardFooter className="pt-2 pb-6">
                 {isActive ? (
-                  <Link href={`/automations/builder?type=${template.id}`} className="w-full block">
-                    <Button className="w-full justify-center bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors h-11 border-none shadow-sm">
-                      Use Template <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
+                  <Link 
+                    href={`/automations/builder?type=${template.id}`} 
+                    className={cn(buttonVariants({ variant: "default" }), "w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors border-none shadow-sm")}
+                  >
+                    Use Template <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 ) : (
                   <Button variant="outline" className="w-full justify-center h-11 opacity-50 cursor-not-allowed text-muted-foreground font-normal bg-slate-50/50 dark:bg-slate-900/50 dark:border-slate-800" disabled>

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Play, X, Plus, Sparkles, MessageCircle, PlusCircle, MessagesSquare, Info, Image as ImageIcon, Link as LinkIcon, Smile, Trash2, Edit2, Check, ExternalLink, Loader2 } from "lucide-react"
+import { ArrowLeft, Play, X, Plus, Sparkles, MessageCircle, PlusCircle, MessagesSquare, Info, Image as ImageIcon, Link as LinkIcon, Smile, Trash2, Edit2, Check, ExternalLink, Loader2, Heart } from "lucide-react"
 import { Instagram } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -97,13 +97,13 @@ export default function AutomationBuilderPage() {
     postSelection: "all",
     keywordType: "specific",
     keywords: ["link", "buy", "shop", "promo"],
-    publicReplyEnabled: true,
+    publicReplyEnabled: false,
     publicReplies: [
       "Please check the DM",
       "Thanks! Please see DM",
       "Sorted! Please check your DM"
     ],
-    openingMessageEnabled: true,
+    openingMessageEnabled: false,
     openingMessage: "Hey there! Thank you so much for your interest 🤩 I'm super glad you're here! ✨ Just click below and I'll send you the details in a sec!",
     buttonLabel: "Send me the details",
     askToFollowEnabled: false,
@@ -205,6 +205,56 @@ export default function AutomationBuilderPage() {
         .finally(() => setIsLoadingMedia(false))
     }
   }, [state.postSelection, state.automation_type])
+  const [isSaving, setIsSaving] = useState(false)
+
+  const saveAutomation = async () => {
+    setIsSaving(true)
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/automations/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: state.automationName,
+          automation_type: state.automation_type || 'dm_reply',
+          status: 'Active',
+          config: state,
+          active: true
+        })
+      })
+      if (res.ok) {
+        router.push("/automations")
+      } else {
+        console.error("Failed to save automation")
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const getStepNumber = (stepId: number) => {
+    let num = 1;
+    const isDm = state.automation_type === 'dm_reply' || state.automation_type === 'auto_reply_dm';
+    const isStory = state.automation_type === 'auto_reply_story';
+    
+    if (stepId === 1) return 1;
+    if (!isDm) num++;
+    
+    if (stepId === 2) return num;
+    num++;
+    
+    if (stepId === 3) return num;
+    if (!isStory && !isDm) num++;
+    
+    if (stepId === 4) return num;
+    num++;
+    
+    if (stepId === 5) return num;
+    num++;
+    
+    return num;
+  }
 
   return (
     <div className="flex h-[calc(100vh-theme(spacing.16))] overflow-hidden -mx-6 -mt-6">
@@ -214,28 +264,35 @@ export default function AutomationBuilderPage() {
         <div className="max-w-2xl mx-auto p-8 space-y-8">
           
           {/* Header */}
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push("/automations")} className="shrink-0">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex flex-col gap-1">
-              <h1 className="text-xl font-bold flex items-center gap-2">
-                Create New Automation
-              </h1>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                Template: 
-                <span className={cn("px-2 py-0.5 rounded-full flex items-center gap-1 font-medium", getTemplateDetails(state.automation_type).bgClass)}>
-                  {(() => {
-                    const { Icon, name } = getTemplateDetails(state.automation_type);
-                    return (
-                      <>
-                        <Icon className="w-3.5 h-3.5" /> {name}
-                      </>
-                    );
-                  })()}
-                </span>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => router.push("/automations")} className="shrink-0">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex flex-col gap-1">
+                <h1 className="text-xl font-bold flex items-center gap-2">
+                  Create New Automation
+                </h1>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  Template: 
+                  <span className={cn("px-2 py-0.5 rounded-full flex items-center gap-1 font-medium", getTemplateDetails(state.automation_type).bgClass)}>
+                    {(() => {
+                      const { Icon, name } = getTemplateDetails(state.automation_type);
+                      return (
+                        <>
+                          <Icon className="w-3.5 h-3.5" /> {name}
+                        </>
+                      );
+                    })()}
+                  </span>
+                </div>
               </div>
             </div>
+            
+            <Button onClick={saveAutomation} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+              Publish Automation
+            </Button>
           </div>
 
           {/* Name Field */}
@@ -267,12 +324,13 @@ export default function AutomationBuilderPage() {
           </div>
 
           {/* STEP 1 */}
+          {state.automation_type !== 'dm_reply' && state.automation_type !== 'auto_reply_dm' && (
           <div 
             className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 1 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
             onClick={() => updateState({ activeStep: 1 })}
           >
             <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3">
-               <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
+               <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{getStepNumber(1)}</div>
                <div>
                  <h3 className="font-semibold text-foreground">
                    {state.automation_type === 'auto_reply_story' ? "Story Selection" : "Select Post or Reel"}
@@ -344,6 +402,16 @@ export default function AutomationBuilderPage() {
                                  <div className="absolute top-1 right-1 bg-black/60 rounded px-1.5 py-0.5 text-[10px] text-white font-medium">
                                    {item.media_type === 'VIDEO' ? '🎥' : item.media_type === 'CAROUSEL_ALBUM' ? '📚' : '🖼'}
                                  </div>
+                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6 flex items-center gap-3 text-xs text-white font-medium">
+                                   <div className="flex items-center gap-1">
+                                     <Heart className="w-3.5 h-3.5" />
+                                     {item.like_count || 0}
+                                   </div>
+                                   <div className="flex items-center gap-1">
+                                     <MessageCircle className="w-3.5 h-3.5" />
+                                     {item.comments_count || 0}
+                                   </div>
+                                 </div>
                                  {isSelected && (
                                    <div className="absolute inset-0 bg-indigo-600/20 flex items-center justify-center backdrop-blur-[1px]">
                                      <div className="bg-indigo-600 text-white rounded-full p-1 shadow-md">
@@ -367,16 +435,18 @@ export default function AutomationBuilderPage() {
             </div>
           </div>
 
+          )}
+
           {/* STEP 2 */}
           <div 
             className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 2 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
             onClick={() => updateState({ activeStep: 2 })}
           >
             <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3">
-               <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
+               <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{getStepNumber(2)}</div>
                <div>
                  <h3 className="font-semibold text-foreground">Define Keywords</h3>
-                 <p className="text-sm text-muted-foreground">Add keywords that will trigger this automation when found in comment</p>
+                 <p className="text-sm text-muted-foreground">Add keywords that will trigger this automation when found in a {state.automation_type === 'dm_reply' || state.automation_type === 'auto_reply_dm' ? 'DM' : 'comment'}</p>
                </div>
             </div>
             <div className="p-4 space-y-4">
@@ -458,14 +528,14 @@ export default function AutomationBuilderPage() {
           </div>
 
           {/* STEP 3 */}
-          {state.automation_type !== 'auto_reply_story' && (
+          {state.automation_type !== 'auto_reply_story' && state.automation_type !== 'dm_reply' && state.automation_type !== 'auto_reply_dm' && (
           <div 
             className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 3 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
             onClick={() => updateState({ activeStep: 3 })}
           >
             <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3 items-start justify-between">
                <div className="flex gap-3">
-                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
+                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{getStepNumber(3)}</div>
                  <div>
                    <h3 className="font-semibold text-foreground flex items-center gap-2">Public reply to comments <Info className="w-4 h-4 text-muted-foreground"/></h3>
                    <p className="text-sm text-muted-foreground">Configure how the automation will respond to comments</p>
@@ -559,10 +629,10 @@ export default function AutomationBuilderPage() {
           >
             <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3 items-start justify-between">
                <div className="flex gap-3">
-                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{state.automation_type === 'auto_reply_story' ? 3 : 4}</div>
+                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{getStepNumber(4)}</div>
                  <div>
                    <h3 className="font-semibold text-foreground flex items-center gap-2">Opening Message <Info className="w-4 h-4 text-muted-foreground"/></h3>
-                   <p className="text-sm text-muted-foreground">This is the first message users see after commenting on your post or reel.</p>
+                   <p className="text-sm text-muted-foreground">This is the first message users see in their DM {state.automation_type === 'dm_reply' || state.automation_type === 'auto_reply_dm' ? 'as an automated response.' : 'after commenting on your post or reel.'}</p>
                  </div>
                </div>
                <Toggle checked={state.openingMessageEnabled} onChange={v => updateState({ openingMessageEnabled: v })} />
@@ -629,7 +699,7 @@ export default function AutomationBuilderPage() {
           >
             <div className="p-4 flex gap-3 items-start justify-between">
                <div className="flex gap-3">
-                 <div className="w-6 h-6 rounded-full bg-indigo-600/80 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{state.automation_type === 'auto_reply_story' ? 4 : 5}</div>
+                 <div className="w-6 h-6 rounded-full bg-indigo-600/80 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{getStepNumber(5)}</div>
                  <div>
                    <h3 className="font-semibold text-foreground flex items-center gap-2">Ask to follow before sending the details <Info className="w-4 h-4 text-muted-foreground"/></h3>
                    <p className="text-sm text-muted-foreground">Request users to follow your account before sending the details</p>
@@ -723,7 +793,7 @@ export default function AutomationBuilderPage() {
           >
             <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3 items-start justify-between">
                <div className="flex gap-3">
-                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{state.automation_type === 'auto_reply_story' ? 5 : 6}</div>
+                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{getStepNumber(6)}</div>
                  <div>
                    <h3 className="font-semibold text-foreground flex items-center gap-2">Compose Message</h3>
                    <p className="text-sm text-muted-foreground">Write the message that will be sent to users</p>
@@ -983,10 +1053,14 @@ export default function AutomationBuilderPage() {
       </div>
 
       {/* RIGHT COLUMN: Phone Preview */}
-      <div className="hidden lg:flex w-[400px] xl:w-[500px] bg-slate-100/50 dark:bg-[#090E17] border-l items-center justify-center relative p-8">
+      <div className="hidden lg:flex w-[400px] xl:w-[500px] bg-slate-100/50 dark:bg-[#090E17] border-l items-center justify-center relative p-4 xl:p-8 overflow-hidden">
         {/* Glow effect */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none" />
-        <PhonePreview state={state} />
+        
+        {/* Scaled Container for Phone Preview */}
+        <div className="transform scale-[0.8] xl:scale-[0.85] origin-center transition-transform">
+          <PhonePreview state={state} media={media} />
+        </div>
       </div>
 
     </div>

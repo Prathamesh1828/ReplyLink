@@ -74,7 +74,11 @@ export function RecentActivity() {
             </div>
             <div className="ml-4 space-y-1 flex-1">
               <p className="text-sm font-medium leading-none">
-                @{item.username} {item.automation_type === 'auto_reply_story' ? 'replied to your story' : 'commented'}
+                @{item.username} {
+                  item.automation_type === 'auto_reply_story' ? 'replied to your story' : 
+                  (item.automation_type === 'auto_reply_dm' || item.automation_type === 'dm_reply') ? 'sent you a DM' : 
+                  'commented'
+                }
               </p>
               <p className="text-sm text-muted-foreground line-clamp-1 italic">
                 "{item.comment}"

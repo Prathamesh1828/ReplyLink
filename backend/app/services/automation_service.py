@@ -176,6 +176,7 @@ class AutomationService:
                 print(f"Story Reply Match found for automation: {auto.get('name')}")
                 
                 try:
+                    from app.services.meta_service import MetaService
                     fetched_username = MetaService.get_user_profile(sender_id, page_access_token)
                     
                     run_data = {
@@ -220,6 +221,94 @@ class AutomationService:
                     
                 except Exception as e:
                     print(f"Failed during story automation run execution: {e}")
+                    break
+
+    @staticmethod
+    def handle_dm(text: str, sender_id: str, instagram_business_id: str, message_id: str):
+        print(f"Handling DM from (ID: {sender_id}): {text}")
+        
+        account = account_service.get_account_by_instagram_id(instagram_business_id)
+        if not account:
+            return
+            
+        user_id = account.get("user_id")
+        page_access_token = account.get("page_access_token")
+        
+        active_automations = AutomationRepository.get_active_automations_by_user(user_id)
+        if not active_automations:
+            return
+
+        dm_automations = [a for a in active_automations if a.get("automation_type") in ["dm_reply", "auto_reply_dm"]]
+        if not dm_automations:
+            return
+
+        text_lower = text.lower()
+        
+        for auto in dm_automations:
+            config = auto.get("config", {})
+            keyword_type = config.get("keywordType", "specific")
+            keywords = [k.lower() for k in config.get("keywords", [])]
+            
+            matched_keyword = "ANY"
+            is_match = False
+            if keyword_type == "any":
+                is_match = True
+            else:
+                for k in keywords:
+                    if k in text_lower:
+                        is_match = True
+                        matched_keyword = k
+                        break
+                        
+            if is_match:
+                print(f"DM Match found for automation: {auto.get('name')}")
+                
+                try:
+                    from app.services.meta_service import MetaService
+                    fetched_username = MetaService.get_user_profile(sender_id, page_access_token)
+                    
+                    run_data = {
+                        "automation_id": auto["id"],
+                        "comment_id": message_id,
+                        "username": fetched_username or "DM Sender", 
+                        "status": "pending",
+                        "instagram_account": instagram_business_id,
+                        "keyword": matched_keyword,
+                        "comment": text,
+                        "dm_sent": False,
+                        "public_reply_sent": False
+                    }
+                    run_res = supabase.table("automation_runs").insert(run_data).execute()
+                    run_id = run_res.data[0]["id"]
+                    
+                    dm_success = automation_service.trigger_next_sequence_step(
+                        run_id=run_id,
+                        config=config,
+                        recipient_id=sender_id,
+                        page_access_token=page_access_token,
+                        instagram_business_id=instagram_business_id,
+                        step="START"
+                    )
+                    
+                    status = "success" if dm_success else "error"
+                    error_msg = None if dm_success else "Failed to start DM sequence"
+                        
+                    new_count = auto.get("runs_count", 0) + 1
+                    supabase.table("automations").update({
+                        "runs_count": new_count,
+                        "last_run_at": datetime.utcnow().isoformat()
+                    }).eq("id", auto["id"]).execute()
+                    
+                    supabase.table("automation_runs").update({
+                        "status": status,
+                        "error": error_msg,
+                        "dm_sent": dm_success
+                    }).eq("id", run_id).execute()
+                    
+                    break
+                    
+                except Exception as e:
+                    print(f"Failed during DM automation run execution: {e}")
                     break
 
     def trigger_next_sequence_step(self, run_id: str, config: dict, recipient_id: str, page_access_token: str, instagram_business_id: str, step: str, comment_id: str = None) -> bool:

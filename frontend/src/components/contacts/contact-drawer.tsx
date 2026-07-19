@@ -9,13 +9,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { MessageSquare, Bot, UserPlus, Mail, AtSign, Calendar, Clock, Activity, Share2 } from "lucide-react"
+import { MessageSquare, Bot, UserPlus, Mail, AtSign, Calendar, Clock, Activity, Share2, MessagesSquare, PlusCircle, MessageCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface TimelineEvent {
   type: "dm_received" | "ai_reply" | "captured"
   text: string
   time: string
+  source?: string
 }
 
 export interface Contact {
@@ -47,7 +48,16 @@ function formatDateTime(dateStr: string) {
   })
 }
 
-function getTimelineIcon(type: string) {
+function getTimelineIcon(type: string, source?: string) {
+  if (source === "DM") {
+    return <MessagesSquare className="h-4 w-4 text-white" />
+  }
+  if (source === "Story Reply") {
+    return <PlusCircle className="h-4 w-4 text-white" />
+  }
+  if (source === "Comment") {
+    return <MessageCircle className="h-4 w-4 text-white" />
+  }
   switch (type) {
     case "dm_received":
       return <MessageSquare className="h-4 w-4 text-blue-500" />
@@ -155,11 +165,14 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
                   {/* Icon */}
                   <div className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full shrink-0 z-10 ring-4 ring-background shadow-sm",
+                    event.source === "DM" ? "bg-[#f97316] text-white" :
+                    event.source === "Story Reply" ? "bg-[#10b981] text-white" :
+                    event.source === "Comment" ? "bg-[#0ea5e9] text-white" :
                     event.type === "dm_received" ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30" : 
                     event.type === "ai_reply" ? "bg-primary/10 text-primary" : 
                     "bg-green-50 text-green-600 dark:bg-green-900/30"
                   )}>
-                    {getTimelineIcon(event.type)}
+                    {getTimelineIcon(event.type, event.source)}
                   </div>
                   {/* Content */}
                   <div className="flex-1 min-w-0 pt-1">

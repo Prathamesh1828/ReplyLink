@@ -239,6 +239,7 @@ export function AutomationsTable() {
             <DropdownMenuItem onClick={() => setTemplateFilter('all')}>All Templates</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTemplateFilter('auto_dm_comments')}>Auto-DM Links from Comments</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTemplateFilter('auto_reply_story')}>Auto-Respond to Story Replies</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTemplateFilter('auto_reply_dm')}>Auto-Respond to DMs</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -296,8 +297,11 @@ export function AutomationsTable() {
                     <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${bgClass}`}>
                       <Icon className="h-5 w-5" />
                     </div>
-                    <div className="flex flex-col gap-1 truncate w-full">
-                      <span className="font-medium text-foreground truncate">{item.name}</span>
+                    <div className="flex flex-col gap-1.5 truncate w-full">
+                      <span className="font-medium text-foreground truncate leading-none">{item.name}</span>
+                      <div className="flex items-center gap-1 text-[11px] font-medium bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 w-fit px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-500/20 leading-none">
+                        <Icon className="w-3 h-3" /> {getTemplateName(item.automation_type)}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="flex items-center justify-center font-medium text-foreground w-full">{item.runs}</TableCell>

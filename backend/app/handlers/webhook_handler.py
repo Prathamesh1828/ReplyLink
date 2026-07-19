@@ -70,8 +70,15 @@ class WebhookHandler:
                                 message_id=message_id
                             )
                         else:
-                            # DM flow to be handled later by FAQ/Knowledge service
-                            pass
+                            text = message.get("text", "")
+                            message_id = message.get("mid", f"dm_{sender_id}")
+                            print(f"STANDARD DM DETECTED: {text}")
+                            automation_service.handle_dm(
+                                text=text,
+                                sender_id=sender_id,
+                                instagram_business_id=instagram_business_id,
+                                message_id=message_id
+                            )
         except Exception as e:
             print("\nERROR PROCESSING WEBHOOK in Handler")
             print(str(e))
