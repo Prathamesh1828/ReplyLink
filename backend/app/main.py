@@ -9,6 +9,8 @@ from app.api.knowledge import router as knowledge_router
 from app.api.automations import router as automations_router
 from app.api.auth import router as auth_router
 from app.api.accounts import router as accounts_router
+from app.api.tracking import router as tracking_router
+from app.api.dashboard import router as dashboard_router
 
 # --------------------------------------------------
 # Load Environment Variables
@@ -22,16 +24,13 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 # FastAPI App
 # --------------------------------------------------
 
-app = FastAPI(
-    title="ReplyLink API",
-    version="1.0.0"
-)
+app = FastAPI(title="ReplyLink API")
 
-# Enable CORS for the frontend
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=False,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://replylink.vercel.app"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -40,10 +39,20 @@ app.add_middleware(
 # Register API Routers
 # --------------------------------------------------
 
-app.include_router(knowledge_router)
-app.include_router(automations_router)
+from fastapi.staticfiles import StaticFiles
+import os
+
+os.makedirs("app/uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="app/uploads"), name="uploads")
+
+from app.api.contacts import router as contacts_router
 app.include_router(auth_router)
+app.include_router(automations_router)
 app.include_router(accounts_router)
+app.include_router(dashboard_router)
+app.include_router(knowledge_router)
+app.include_router(tracking_router)
+app.include_router(contacts_router, prefix="/api", tags=["contacts"])
 
 # --------------------------------------------------
 # Sample Automations (Temporary)

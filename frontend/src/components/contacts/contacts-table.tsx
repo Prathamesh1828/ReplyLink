@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Table,
   TableBody,
@@ -13,124 +13,100 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Search, ExternalLink, Filter } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Search, ExternalLink, Filter, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { ContactDrawer, Contact } from "./contact-drawer"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
-const dummyContacts: Contact[] = [
-  {
-    id: "c_1",
-    name: "Sarah Johnson",
-    handle: "@sarahjohnson",
-    email: "sarah.j@email.com",
-    source: "Story Reply",
-    status: "lead",
-    firstContact: "2024-01-12T10:30:00Z",
-    lastActive: "2024-01-14T14:22:00Z",
-    messages: 12,
-    timeline: [
-      { type: "dm_received", text: "Hey, I'd love to know more about your services!", time: "2024-01-14T14:22:00Z" },
-      { type: "ai_reply", text: "Thanks for reaching out, Sarah! We offer three plans…", time: "2024-01-14T14:22:05Z" },
-      { type: "dm_received", text: "What's the pricing?", time: "2024-01-13T09:15:00Z" },
-      { type: "ai_reply", text: "Our starter plan begins at $29/mo. I can send you a link!", time: "2024-01-13T09:15:08Z" },
-      { type: "captured", text: "Lead captured via Story Reply automation", time: "2024-01-12T10:30:00Z" },
-    ]
-  },
-  {
-    id: "c_2",
-    name: "Mike Ross",
-    handle: "@mikeross_fit",
-    email: null,
-    source: "Comment",
-    status: "customer",
-    firstContact: "2023-12-05T08:00:00Z",
-    lastActive: "2024-01-10T16:45:00Z",
-    messages: 34,
-    timeline: [
-      { type: "dm_received", text: "Just signed up! Thanks for the help.", time: "2024-01-10T16:45:00Z" },
-      { type: "ai_reply", text: "Welcome aboard, Mike! Let us know if you need anything.", time: "2024-01-10T16:45:03Z" },
-      { type: "captured", text: "Lead captured via Comment automation", time: "2023-12-05T08:00:00Z" },
-    ]
-  },
-  {
-    id: "c_3",
-    name: "Emily Davis",
-    handle: "@emilyd",
-    email: "emily@company.co",
-    source: "DM",
-    status: "lead",
-    firstContact: "2024-01-08T11:20:00Z",
-    lastActive: "2024-01-13T18:00:00Z",
-    messages: 5,
-    timeline: [
-      { type: "dm_received", text: "Do you offer enterprise plans?", time: "2024-01-13T18:00:00Z" },
-      { type: "ai_reply", text: "Yes! We have custom enterprise solutions. Let me connect you with our team.", time: "2024-01-13T18:00:04Z" },
-      { type: "captured", text: "Lead captured via DM automation", time: "2024-01-08T11:20:00Z" },
-    ]
-  },
-  {
-    id: "c_4",
-    name: "Alex Wong",
-    handle: "@alexwong",
-    email: null,
-    source: "Story Reply",
-    status: "unqualified",
-    firstContact: "2024-01-11T07:30:00Z",
-    lastActive: "2024-01-11T07:31:00Z",
-    messages: 1,
-    timeline: [
-      { type: "dm_received", text: "🔥", time: "2024-01-11T07:30:00Z" },
-      { type: "ai_reply", text: "Thanks for the love! Check out our latest post for more 🙌", time: "2024-01-11T07:30:05Z" },
-    ]
-  },
-  {
-    id: "c_5",
-    name: "Jordan Lee",
-    handle: "@jordanlee.co",
-    email: "jordan@lee.co",
-    source: "Comment",
-    status: "customer",
-    firstContact: "2023-11-20T15:00:00Z",
-    lastActive: "2024-01-12T12:10:00Z",
-    messages: 22,
-    timeline: [
-      { type: "dm_received", text: "Can I upgrade my plan?", time: "2024-01-12T12:10:00Z" },
-      { type: "ai_reply", text: "Of course! Here's a link to manage your subscription.", time: "2024-01-12T12:10:06Z" },
-      { type: "captured", text: "Lead captured via Comment automation", time: "2023-11-20T15:00:00Z" },
-    ]
-  },
-]
 
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "lead":
-      return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-blue-500/20">Lead</Badge>
-    case "customer":
-      return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20">Customer</Badge>
-    case "unqualified":
-      return <Badge variant="secondary">Unqualified</Badge>
-    default:
-      return <Badge variant="outline">{status}</Badge>
-  }
-}
+
+import { useRealtimeQuery } from "@/hooks/use-realtime-query"
 
 function formatDate(dateStr: string) {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  const now = new Date();
+  
+  // Convert to UTC for accurate comparison since backend dates are UTC
+  const utcDate = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
+  const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
+  
+  const seconds = Math.floor((utcNow - utcDate) / 1000);
+  
+  // Just in case time sync is slightly off
+  if (seconds < 60) return "Just now";
+  
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min${minutes > 1 ? 's' : ''} ago`;
+  
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+  
+  const weeks = Math.floor(days / 7);
+  if (days < 30) return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+  
+  if (days >= 30 && days < 60) return "1 month ago";
+  
   return new Date(dateStr).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-  })
+  });
 }
+
+const rowGrid = "grid grid-cols-[3fr_1.5fr_0.6fr] sm:grid-cols-[3fr_1.5fr_1fr_0.6fr] md:grid-cols-[3fr_1.5fr_1fr_1.6fr_1.6fr_0.6fr] items-center justify-items-center w-full gap-4 px-4"
 
 export function ContactsTable() {
   const [search, setSearch] = useState("")
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState("All")
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
 
-  const filtered = dummyContacts.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.handle.toLowerCase().includes(search.toLowerCase()) ||
-    (c.email && c.email.toLowerCase().includes(search.toLowerCase()))
-  )
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, sourceFilter])
+
+  const { data, isLoading } = useRealtimeQuery({
+    queryKey: ['contacts'],
+    queryFn: async () => {
+      const res = await fetch("http://127.0.0.1:8000/api/contacts", {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem("token")}`
+        }
+      })
+      const json = await res.json()
+      if (Array.isArray(json)) return json
+      console.error("API did not return an array:", json)
+      return []
+    }
+  }, ['automations', 'automation_runs', 'messages'])
+  
+  const contacts = data || []
+
+  const filtered = contacts.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.handle.toLowerCase().includes(search.toLowerCase()) ||
+      (c.email && c.email.toLowerCase().includes(search.toLowerCase()))
+      
+    const matchesSource = sourceFilter === "All" || c.source === sourceFilter
+    
+    return matchesSearch && matchesSource
+  })
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginatedContacts = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
   const handleOpen = (contact: Contact) => {
     setSelectedContact(contact)
@@ -151,61 +127,91 @@ export function ContactsTable() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Button variant="outline" className="hidden sm:flex">
-              <Filter className="mr-2 h-4 w-4" /> Filters
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger className={cn(buttonVariants({ variant: "outline" }), "border-input bg-background font-normal text-muted-foreground min-w-[200px] justify-between")}>
+                {sourceFilter === "All" ? "All Sources" : sourceFilter}
+                <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuItem onClick={() => setSourceFilter("All")}>All Sources</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSourceFilter("Comment")}>Comment</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSourceFilter("Story Reply")}>Story Reply</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        <div className="rounded-md border bg-card">
+        <div className="rounded-lg border bg-card overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Contact</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right hidden sm:table-cell">Messages</TableHead>
-                <TableHead className="hidden md:table-cell">First Contact</TableHead>
-                <TableHead className="hidden md:table-cell">Last Active</TableHead>
-                <TableHead className="w-[60px]"></TableHead>
+              <TableRow className={cn("w-full border-b hover:bg-transparent", rowGrid)}>
+                <TableHead className="justify-self-start flex items-center gap-2 cursor-pointer hover:text-foreground select-none h-12 w-full">
+                  <span className="font-semibold text-foreground">Username</span>
+                  <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </TableHead>
+                <TableHead className="flex items-center justify-center h-12 w-full">Source</TableHead>
+                <TableHead className="hidden sm:flex items-center justify-center h-12 w-full">Messages</TableHead>
+                <TableHead className="hidden md:flex items-center justify-center h-12 w-full">First Contact</TableHead>
+                <TableHead className="hidden md:flex items-center justify-center h-12 w-full">Last Active</TableHead>
+                <TableHead className="flex items-center justify-center h-12 w-full"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className={cn("w-full border-b", rowGrid)}>
+                    <TableCell className="justify-self-start flex items-center gap-3 w-full py-4">
+                      <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell className="flex items-center justify-center w-full">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </TableCell>
+                    <TableCell className="hidden sm:flex items-center justify-center w-full">
+                      <Skeleton className="h-4 w-8" />
+                    </TableCell>
+                    <TableCell className="hidden md:flex items-center justify-center w-full">
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell className="hidden md:flex items-center justify-center w-full">
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell className="flex items-center justify-center w-full">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : filtered.length === 0 ? (
+                <TableRow className="w-full">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground w-full">
                     No contacts found.
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((contact) => (
+                paginatedContacts.map((contact) => (
                   <TableRow
                     key={contact.id}
-                    className="cursor-pointer"
+                    className={cn("cursor-pointer transition-colors hover:bg-muted/50 w-full border-b", rowGrid)}
                     onClick={() => handleOpen(contact)}
                   >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs">
-                            {contact.name.split(" ").map(n => n[0]).join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium leading-none">{contact.name}</p>
-                          <p className="text-xs text-muted-foreground">{contact.handle}</p>
-                        </div>
-                      </div>
+                    <TableCell className="justify-self-start flex items-center gap-3 w-full py-4">
+                      <Avatar className="h-10 w-10 shrink-0">
+                        <AvatarFallback className="text-sm font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          {contact.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-[15px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                        {contact.handle.startsWith("@") ? contact.handle : `@${contact.handle}`}
+                      </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="flex items-center justify-center w-full">
                       <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800">{contact.source}</Badge>
                     </TableCell>
-                    <TableCell>{getStatusBadge(contact.status)}</TableCell>
-                    <TableCell className="text-right hidden sm:table-cell">{contact.messages}</TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{formatDate(contact.firstContact)}</TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{formatDate(contact.lastActive)}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <TableCell className="hidden sm:flex items-center justify-center font-medium w-full">{contact.messages}</TableCell>
+                    <TableCell className="hidden md:flex items-center justify-center text-muted-foreground w-full">{formatDate(contact.firstContact)}</TableCell>
+                    <TableCell className="hidden md:flex items-center justify-center text-muted-foreground w-full">{formatDate(contact.lastActive)}</TableCell>
+                    <TableCell className="flex items-center justify-center w-full">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -215,6 +221,51 @@ export function ContactsTable() {
             </TableBody>
           </Table>
         </div>
+        
+        {totalPages > 1 && (
+          <div className="flex items-center justify-end space-x-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="h-8 rounded-lg px-3 flex items-center gap-1 text-slate-600 dark:text-slate-400 font-medium bg-transparent border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <Button
+                  key={i + 1}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={cn(
+                    "h-8 w-8 p-0 rounded-lg font-medium",
+                    currentPage === i + 1 
+                      ? "bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800" 
+                      : "bg-transparent text-slate-600 border-slate-200 dark:border-slate-800 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900"
+                  )}
+                >
+                  {i + 1}
+                </Button>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="h-8 rounded-lg px-3 flex items-center gap-1 text-slate-600 dark:text-slate-400 font-medium bg-transparent border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <ContactDrawer

@@ -3,7 +3,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, MessageCircle, PlusCircle, MessageSquare, Bot, UserPlus, AtSign, ArrowRight } from "lucide-react"
+import { Sparkles, MessageCircle, PlusCircle, MessageSquare, MessagesSquare, Bot, UserPlus, AtSign, ArrowRight } from "lucide-react"
 import { Instagram } from "@/components/icons"
 import { cn } from "@/lib/utils"
 
@@ -14,28 +14,28 @@ export const metadata: Metadata = {
 
 const templates = [
   {
-    id: "t_1",
+    id: "auto_dm_comments",
     title: "Auto-DM Links from Comments",
     description: "Automatically send a DM with your configured message and link when someone comments using a configured keyword.",
     status: "active",
-    iconClass: "bg-gradient-to-br from-blue-400 to-blue-600",
-    IconComponent: Instagram,
+    iconClass: "bg-[#0ea5e9]",
+    IconComponent: MessageCircle,
   },
   {
-    id: "t_2",
+    id: "auto_reply_story",
     title: "Auto-Respond to Story Replies",
     description: "Automatically reply to users who respond to your Instagram Stories.",
     status: "active",
-    iconClass: "bg-gradient-to-br from-emerald-400 to-emerald-600",
+    iconClass: "bg-[#10b981]",
     IconComponent: PlusCircle,
   },
   {
-    id: "t_3",
+    id: "auto_reply_dm",
     title: "Auto-Respond to DMs",
     description: "Automatically reply to incoming Instagram DMs using your configured workflow.",
     status: "active",
-    iconClass: "bg-gradient-to-br from-orange-400 to-orange-600",
-    IconComponent: MessageSquare,
+    iconClass: "bg-[#f97316]",
+    IconComponent: MessagesSquare,
   },
   {
     id: "t_4",
@@ -121,13 +121,13 @@ export default function TemplatesPage() {
               </CardContent>
               <CardFooter className="pt-2 pb-6">
                 {isActive ? (
-                  <Link href="/automations/builder" className="w-full block">
-                    <Button variant="outline" className="w-full justify-center group-hover:border-primary group-hover:text-primary transition-colors h-11">
+                  <Link href={`/automations/builder?type=${template.id}`} className="w-full block">
+                    <Button className="w-full justify-center bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors h-11 border-none shadow-sm">
                       Use Template <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                 ) : (
-                  <Button variant="outline" className="w-full justify-center h-11 opacity-50 cursor-not-allowed text-muted-foreground font-normal bg-slate-50/50" disabled>
+                  <Button variant="outline" className="w-full justify-center h-11 opacity-50 cursor-not-allowed text-muted-foreground font-normal bg-slate-50/50 dark:bg-slate-900/50 dark:border-slate-800" disabled>
                     Coming Soon
                   </Button>
                 )}

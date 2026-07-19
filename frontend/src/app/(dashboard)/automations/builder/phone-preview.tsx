@@ -24,6 +24,7 @@ export interface BuilderState {
   activeStep: number // 1 to 6
   replyRatio: number
   selectedPostIds: string[]
+  automation_type?: string
 }
 
 export function PhonePreview({ state }: { state: BuilderState }) {

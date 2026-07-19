@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Play, X, Plus, Sparkles, MessageCircle, Info, Image as ImageIcon, Link as LinkIcon, Smile, Trash2, Edit2, Check, ExternalLink, Loader2 } from "lucide-react"
+import { ArrowLeft, Play, X, Plus, Sparkles, MessageCircle, PlusCircle, MessagesSquare, Info, Image as ImageIcon, Link as LinkIcon, Smile, Trash2, Edit2, Check, ExternalLink, Loader2 } from "lucide-react"
 import { Instagram } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -73,11 +73,27 @@ function Slider({ value, onChange }: { value: number; onChange: (v: number) => v
   )
 }
 
+const getTemplateDetails = (type: string | undefined) => {
+  const safeType = type || 'auto_dm_comments';
+  switch (safeType) {
+    case 'auto_dm_comments':
+      return { Icon: MessageCircle, bgClass: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400", name: "Auto-DM Links from Comments" };
+    case 'story_reply':
+    case 'auto_reply_story':
+      return { Icon: PlusCircle, bgClass: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400", name: "Auto-Respond to Story Replies" };
+    case 'dm_reply':
+    case 'auto_reply_dm':
+      return { Icon: MessagesSquare, bgClass: "bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400", name: "Auto-Respond to DMs" };
+    default:
+      return { Icon: MessageCircle, bgClass: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400", name: "Auto-DM Links from Comments" };
+  }
+};
+
 export default function AutomationBuilderPage() {
   const router = useRouter()
   
   const [state, setState] = useState<BuilderState>({
-    automationName: "Real Estate",
+    automationName: "New Automation",
     postSelection: "all",
     keywordType: "specific",
     keywords: ["link", "buy", "shop", "promo"],
@@ -113,15 +129,26 @@ export default function AutomationBuilderPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const id = params.get('id')
+    const type = params.get('type')
+    
     if (id) {
       fetch(`http://127.0.0.1:8000/api/automations/${id}`)
         .then(res => res.json())
         .then(data => {
           if (data && data.config) {
-            setState(data.config)
+            setState({
+              ...data.config,
+              automation_type: data.automation_type,
+              automationName: data.name
+            })
           }
         })
         .catch(err => console.error("Failed to load automation:", err))
+    } else {
+      setEditingName(true)
+      if (type) {
+        updateState({ automation_type: type })
+      }
     }
   }, [])
   
@@ -139,13 +166,35 @@ export default function AutomationBuilderPage() {
     setState(s => ({ ...s, ...updates }))
   }
 
+  const uploadImageToServer = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch('http://127.0.0.1:8000/api/automations/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.url) {
+        updateState({ uploadedImage: data.url });
+      }
+    } catch (err) {
+      console.error("Failed to upload image", err);
+    }
+  }
+
   const [media, setMedia] = useState<any[]>([])
   const [isLoadingMedia, setIsLoadingMedia] = useState(false)
 
   useEffect(() => {
     if (state.postSelection === 'manual' && media.length === 0 && !isLoadingMedia) {
       setIsLoadingMedia(true)
-      fetch('http://127.0.0.1:8000/api/auth/meta/media')
+      const endpoint = state.automation_type === 'auto_reply_story' 
+        ? 'http://127.0.0.1:8000/api/auth/meta/stories'
+        : 'http://127.0.0.1:8000/api/auth/meta/media'
+        
+      fetch(endpoint)
         .then(res => res.json())
         .then(data => {
           if (data && data.media) {
@@ -155,7 +204,7 @@ export default function AutomationBuilderPage() {
         .catch(err => console.error("Failed to load media:", err))
         .finally(() => setIsLoadingMedia(false))
     }
-  }, [state.postSelection])
+  }, [state.postSelection, state.automation_type])
 
   return (
     <div className="flex h-[calc(100vh-theme(spacing.16))] overflow-hidden -mx-6 -mt-6">
@@ -174,7 +223,17 @@ export default function AutomationBuilderPage() {
                 Create New Automation
               </h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                Template: <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium"><Instagram className="w-3 h-3"/> Auto-DM Links from Comments</span>
+                Template: 
+                <span className={cn("px-2 py-0.5 rounded-full flex items-center gap-1 font-medium", getTemplateDetails(state.automation_type).bgClass)}>
+                  {(() => {
+                    const { Icon, name } = getTemplateDetails(state.automation_type);
+                    return (
+                      <>
+                        <Icon className="w-3.5 h-3.5" /> {name}
+                      </>
+                    );
+                  })()}
+                </span>
               </div>
             </div>
           </div>
@@ -215,8 +274,14 @@ export default function AutomationBuilderPage() {
             <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3">
                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
                <div>
-                 <h3 className="font-semibold text-foreground">Select Post or Reel</h3>
-                 <p className="text-sm text-muted-foreground">Choose which posts or reels will trigger this automation</p>
+                 <h3 className="font-semibold text-foreground">
+                   {state.automation_type === 'auto_reply_story' ? "Story Selection" : "Select Post or Reel"}
+                 </h3>
+                 <p className="text-sm text-muted-foreground">
+                   {state.automation_type === 'auto_reply_story' 
+                     ? "This automation runs on replies to your active Instagram Stories" 
+                     : "Choose which posts or reels will trigger this automation"}
+                 </p>
                </div>
             </div>
             <div className="p-4 space-y-3">
@@ -234,11 +299,17 @@ export default function AutomationBuilderPage() {
                         {state.postSelection === opt && <div className="w-2 h-2 bg-indigo-600 rounded-full" />}
                      </div>
                      <span className="font-medium text-sm">
-                       {opt === 'manual' ? 'Manually select post or reel' : opt === 'all' ? 'All posts or reels' : 'Next post or reel'}
+                       {opt === 'manual' 
+                         ? (state.automation_type === 'auto_reply_story' ? 'Manually select story' : 'Manually select post or reel') 
+                         : opt === 'all' 
+                           ? (state.automation_type === 'auto_reply_story' ? 'All active stories' : 'All posts or reels') 
+                           : (state.automation_type === 'auto_reply_story' ? 'Next story' : 'Next post or reel')}
                      </span>
                    </div>
                    {opt === 'all' && state.postSelection === 'all' && (
-                     <p className="text-xs text-muted-foreground mt-2 ml-7">This automation will work with all your posts and reels.</p>
+                     <p className="text-xs text-muted-foreground mt-2 ml-7">
+                       {state.automation_type === 'auto_reply_story' ? 'This automation will work with all your active stories.' : 'This automation will work with all your posts and reels.'}
+                     </p>
                    )}
                    {opt === 'manual' && state.postSelection === 'manual' && (
                      <div className="mt-4 ml-7">
@@ -292,7 +363,7 @@ export default function AutomationBuilderPage() {
                      </div>
                    )}
                  </div>
-               ))}
+                 ))}
             </div>
           </div>
 
@@ -387,6 +458,7 @@ export default function AutomationBuilderPage() {
           </div>
 
           {/* STEP 3 */}
+          {state.automation_type !== 'auto_reply_story' && (
           <div 
             className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 3 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
             onClick={() => updateState({ activeStep: 3 })}
@@ -478,6 +550,7 @@ export default function AutomationBuilderPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* STEP 4 */}
           <div 
@@ -486,7 +559,7 @@ export default function AutomationBuilderPage() {
           >
             <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3 items-start justify-between">
                <div className="flex gap-3">
-                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">4</div>
+                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{state.automation_type === 'auto_reply_story' ? 3 : 4}</div>
                  <div>
                    <h3 className="font-semibold text-foreground flex items-center gap-2">Opening Message <Info className="w-4 h-4 text-muted-foreground"/></h3>
                    <p className="text-sm text-muted-foreground">This is the first message users see after commenting on your post or reel.</p>
@@ -556,7 +629,7 @@ export default function AutomationBuilderPage() {
           >
             <div className="p-4 flex gap-3 items-start justify-between">
                <div className="flex gap-3">
-                 <div className="w-6 h-6 rounded-full bg-indigo-600/80 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">5</div>
+                 <div className="w-6 h-6 rounded-full bg-indigo-600/80 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{state.automation_type === 'auto_reply_story' ? 4 : 5}</div>
                  <div>
                    <h3 className="font-semibold text-foreground flex items-center gap-2">Ask to follow before sending the details <Info className="w-4 h-4 text-muted-foreground"/></h3>
                    <p className="text-sm text-muted-foreground">Request users to follow your account before sending the details</p>
@@ -650,7 +723,7 @@ export default function AutomationBuilderPage() {
           >
             <div className="p-4 border-b bg-slate-50/50 dark:bg-muted/20 flex gap-3 items-start justify-between">
                <div className="flex gap-3">
-                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">6</div>
+                 <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{state.automation_type === 'auto_reply_story' ? 5 : 6}</div>
                  <div>
                    <h3 className="font-semibold text-foreground flex items-center gap-2">Compose Message</h3>
                    <p className="text-sm text-muted-foreground">Write the message that will be sent to users</p>
@@ -668,7 +741,7 @@ export default function AutomationBuilderPage() {
                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
                        const file = e.dataTransfer.files[0]
                        if (file.type.startsWith('image/')) {
-                         updateState({ uploadedImage: URL.createObjectURL(file) })
+                         uploadImageToServer(file)
                        }
                      }
                    }}
@@ -681,7 +754,7 @@ export default function AutomationBuilderPage() {
                      accept="image/png, image/jpeg" 
                      onChange={e => {
                        if (e.target.files && e.target.files[0]) {
-                         updateState({ uploadedImage: URL.createObjectURL(e.target.files[0]) })
+                         uploadImageToServer(e.target.files[0])
                        }
                      }} 
                    />
@@ -790,6 +863,12 @@ export default function AutomationBuilderPage() {
                          <Input 
                            value={tempLinkLabel}
                            onChange={e => setTempLinkLabel(e.target.value)}
+                           onKeyDown={e => {
+                             if (e.key === 'Enter' && tempLinkLabel.trim() && tempLinkUrl.trim()) {
+                               updateState({ finalLink: tempLinkUrl, finalLinkLabel: tempLinkLabel });
+                               setIsLinkModalOpen(false);
+                             }
+                           }}
                            placeholder="e.g., Visit Website" 
                          />
                        </div>
@@ -798,6 +877,12 @@ export default function AutomationBuilderPage() {
                          <Input 
                            value={tempLinkUrl}
                            onChange={e => setTempLinkUrl(e.target.value)}
+                           onKeyDown={e => {
+                             if (e.key === 'Enter' && tempLinkLabel.trim() && tempLinkUrl.trim()) {
+                               updateState({ finalLink: tempLinkUrl, finalLinkLabel: tempLinkLabel });
+                               setIsLinkModalOpen(false);
+                             }
+                           }}
                            placeholder="e.g., https://example.com" 
                          />
                        </div>
@@ -835,6 +920,7 @@ export default function AutomationBuilderPage() {
                  
                  const payload = {
                    name: state.automationName || "link",
+                   automation_type: state.automation_type || "auto_dm_comments",
                    status: "Draft",
                    config: state,
                    active: false
@@ -867,6 +953,7 @@ export default function AutomationBuilderPage() {
                  
                  const payload = {
                    name: state.automationName || "link",
+                   automation_type: state.automation_type || "auto_dm_comments",
                    status: "Active",
                    config: state,
                    active: true

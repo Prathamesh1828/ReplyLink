@@ -20,7 +20,7 @@ export default function AutomationsPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Link href="/automations/builder">
+          <Link href="/templates">
             <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
               <Plus className="mr-2 h-4 w-4" />
               Create New Automation

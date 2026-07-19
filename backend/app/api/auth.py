@@ -149,3 +149,27 @@ def get_user_meta_media(x_user_id: Optional[str] = Header(None)):
         
     media = meta_service.get_instagram_media(ig_id, token)
     return {"media": media}
+
+@router.get("/meta/stories")
+def get_user_meta_stories(x_user_id: Optional[str] = Header(None)):
+    """Fetches the connected Instagram account's active stories."""
+    user_id = x_user_id or "7dc543e2-2801-49ec-8d10-c6fc07b557d2"
+    accounts = account_repository.get_by_user_id(user_id)
+    if not accounts:
+        accounts = account_repository.get_by_user_id("7dc543e2-2801-49ec-8d10-c6fc07b557d2")
+        
+    if not accounts:
+        raise HTTPException(status_code=404, detail="No Instagram account connected")
+        
+    active_account = next((acc for acc in accounts if acc.get("active")), None)
+    if not active_account:
+        active_account = accounts[0]
+        
+    ig_id = active_account.get("instagram_account_id")
+    token = active_account.get("page_access_token")
+    
+    if not ig_id or not token:
+        raise HTTPException(status_code=500, detail="Invalid account configuration")
+        
+    stories = meta_service.get_instagram_stories(ig_id, token)
+    return {"media": stories}

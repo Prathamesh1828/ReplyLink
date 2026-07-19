@@ -1,4 +1,5 @@
 import random
+from datetime import datetime
 from app.services.account_service import account_service
 from app.repositories.automation_repository import AutomationRepository
 from app.services.meta_service import meta_service
@@ -21,13 +22,16 @@ class AutomationService:
         # 2. Fetch active automations for the user via Repository
         active_automations = AutomationRepository.get_active_automations_by_user(user_id)
         
-        if not active_automations:
-            print(f"No active automations found for user {user_id}.")
+        # Only process comment automations
+        comment_automations = [a for a in active_automations if a.get("automation_type", "auto_dm_comments") == "auto_dm_comments"]
+        
+        if not comment_automations:
+            print(f"No active comment automations found for user {user_id}.")
             return
 
         comment_text_lower = comment_text.lower()
         
-        for auto in active_automations:
+        for auto in comment_automations:
             config = auto.get("config", {})
             
             # Post Filtering
@@ -101,7 +105,8 @@ class AutomationService:
                         recipient_id=commenter_id,
                         page_access_token=page_access_token,
                         instagram_business_id=instagram_business_id,
-                        step="START"
+                        step="START",
+                        comment_id=comment_id
                     )
                     
                     if dm_success:
@@ -112,7 +117,10 @@ class AutomationService:
                         
                     # 6. Increment runs_count and update run status
                     new_count = auto.get("runs_count", 0) + 1
-                    supabase.table("automations").update({"runs_count": new_count}).eq("id", auto["id"]).execute()
+                    supabase.table("automations").update({
+                        "runs_count": new_count,
+                        "last_run_at": datetime.utcnow().isoformat()
+                    }).eq("id", auto["id"]).execute()
                     
                     supabase.table("automation_runs").update({
                         "status": status,
@@ -127,7 +135,94 @@ class AutomationService:
                     print(f"Failed during automation run execution: {e}")
                     break
 
-    def trigger_next_sequence_step(self, run_id: str, config: dict, recipient_id: str, page_access_token: str, instagram_business_id: str, step: str) -> bool:
+    @staticmethod
+    def handle_story_reply(text: str, sender_id: str, instagram_business_id: str, message_id: str):
+        print(f"Handling story reply from (ID: {sender_id}): {text}")
+        
+        account = account_service.get_account_by_instagram_id(instagram_business_id)
+        if not account:
+            return
+            
+        user_id = account.get("user_id")
+        page_access_token = account.get("page_access_token")
+        
+        active_automations = AutomationRepository.get_active_automations_by_user(user_id)
+        if not active_automations:
+            return
+
+        story_automations = [a for a in active_automations if a.get("automation_type") == "auto_reply_story"]
+        if not story_automations:
+            return
+
+        text_lower = text.lower()
+        
+        for auto in story_automations:
+            config = auto.get("config", {})
+            keyword_type = config.get("keywordType", "specific")
+            keywords = [k.lower() for k in config.get("keywords", [])]
+            
+            matched_keyword = "ANY"
+            is_match = False
+            if keyword_type == "any":
+                is_match = True
+            else:
+                for k in keywords:
+                    if k in text_lower:
+                        is_match = True
+                        matched_keyword = k
+                        break
+                        
+            if is_match:
+                print(f"Story Reply Match found for automation: {auto.get('name')}")
+                
+                try:
+                    fetched_username = MetaService.get_user_profile(sender_id, page_access_token)
+                    
+                    run_data = {
+                        "automation_id": auto["id"],
+                        "comment_id": message_id,
+                        "username": fetched_username or "Story Viewer", 
+                        "status": "pending",
+                        "instagram_account": instagram_business_id,
+                        "keyword": matched_keyword,
+                        "comment": text,
+                        "dm_sent": False,
+                        "public_reply_sent": False
+                    }
+                    run_res = supabase.table("automation_runs").insert(run_data).execute()
+                    run_id = run_res.data[0]["id"]
+                    
+                    dm_success = automation_service.trigger_next_sequence_step(
+                        run_id=run_id,
+                        config=config,
+                        recipient_id=sender_id,
+                        page_access_token=page_access_token,
+                        instagram_business_id=instagram_business_id,
+                        step="START"
+                    )
+                    
+                    status = "success" if dm_success else "error"
+                    error_msg = None if dm_success else "Failed to start DM sequence"
+                        
+                    new_count = auto.get("runs_count", 0) + 1
+                    supabase.table("automations").update({
+                        "runs_count": new_count,
+                        "last_run_at": datetime.utcnow().isoformat()
+                    }).eq("id", auto["id"]).execute()
+                    
+                    supabase.table("automation_runs").update({
+                        "status": status,
+                        "error": error_msg,
+                        "dm_sent": dm_success
+                    }).eq("id", run_id).execute()
+                    
+                    break
+                    
+                except Exception as e:
+                    print(f"Failed during story automation run execution: {e}")
+                    break
+
+    def trigger_next_sequence_step(self, run_id: str, config: dict, recipient_id: str, page_access_token: str, instagram_business_id: str, step: str, comment_id: str = None) -> bool:
         """State machine for DM sequence."""
         try:
             if step == "START":
@@ -143,11 +238,12 @@ class AutomationService:
                         recipient_id=recipient_id,
                         message=config.get("openingMessage"),
                         page_access_token=page_access_token,
-                        buttons=buttons
+                        buttons=buttons,
+                        comment_id=comment_id
                     )
                 else:
                     # Skip opening message, go directly to next logical step
-                    return self.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, "FOLLOW" if config.get("askToFollowEnabled") else "FINAL")
+                    return self.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, "FOLLOW" if config.get("askToFollowEnabled") else "FINAL", comment_id)
                     
             elif step == "FOLLOW":
                 if config.get("askToFollowEnabled") and config.get("askToFollowMessage"):
@@ -185,20 +281,26 @@ class AutomationService:
                     return self.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, "FINAL")
                 else:
                     print("User is NOT following. Looping back to FOLLOW.")
-                    return self.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, "FOLLOW")
+                    return self.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, "FOLLOW", comment_id)
                     
             elif step == "FINAL":
                 if config.get("finalMessage"):
+                    import os
+                    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
+                    tracking_link = f"{backend_url}/api/l/{run_id}"
+                    
                     buttons = [{
                         "type": "web_url",
-                        "url": config.get("finalLink", "https://google.com"),
+                        "url": tracking_link,
                         "title": config.get("finalLinkLabel", "App ❤️")
                     }]
                     return meta_service.send_dm(
                         recipient_id=recipient_id,
                         message=config.get("finalMessage"),
                         page_access_token=page_access_token,
-                        buttons=buttons
+                        buttons=buttons,
+                        image_url=config.get("uploadedImage"),
+                        comment_id=comment_id
                     )
                 return True
                 

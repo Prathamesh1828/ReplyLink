@@ -2,7 +2,6 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import {
   Sheet,
   SheetContent,
@@ -10,7 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { MessageSquare, Bot, UserPlus, Mail, AtSign, Calendar, Clock } from "lucide-react"
+import { MessageSquare, Bot, UserPlus, Mail, AtSign, Calendar, Clock, Activity, Share2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface TimelineEvent {
@@ -81,76 +80,99 @@ export function ContactDrawer({ open, onOpenChange, contact }: ContactDrawerProp
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-[480px] flex flex-col h-full overflow-y-auto">
-        <SheetHeader className="text-left">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-14 w-14">
-              <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <SheetTitle className="text-xl">{contact.name}</SheetTitle>
-              <SheetDescription className="flex items-center gap-1">
-                <AtSign className="h-3 w-3" />
-                {contact.handle.replace("@", "")}
-              </SheetDescription>
+      <SheetContent className="sm:max-w-[480px] p-0 flex flex-col h-full bg-slate-50/50 dark:bg-slate-950/50 backdrop-blur-xl">
+        <div className="px-6 py-6 bg-gradient-to-b from-primary/5 to-transparent border-b">
+          <SheetHeader className="text-left">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16 border-2 border-background shadow-sm ring-2 ring-primary/20">
+                <AvatarFallback className="text-xl font-semibold bg-primary text-primary-foreground">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <SheetTitle className="text-2xl font-bold tracking-tight">{contact.name}</SheetTitle>
+              </div>
             </div>
-          </div>
-        </SheetHeader>
+          </SheetHeader>
+        </div>
 
-        <div className="py-4 space-y-4">
+        <div className="px-6 py-6 flex-1 overflow-y-auto space-y-8">
           {/* Details Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> Email</p>
-              <p className="text-sm font-medium">{contact.email || "—"}</p>
+          {/* Details Grid */}
+          <div className="grid grid-cols-2 gap-3">            <div className="flex flex-col gap-1.5 p-3.5 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="p-1.5 rounded-md bg-orange-500/10 text-orange-500">
+                  <Calendar className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider">First Contact</span>
+              </div>
+              <p className="text-sm font-medium pl-1">{new Date(contact.firstContact).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Status</p>
-              {getStatusBadge(contact.status)}
+
+            <div className="flex flex-col gap-1.5 p-3.5 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="p-1.5 rounded-md bg-green-500/10 text-green-500">
+                  <Clock className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Last Active</span>
+              </div>
+              <p className="text-sm font-medium pl-1">{new Date(contact.lastActive).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> First Contact</p>
-              <p className="text-sm font-medium">{new Date(contact.firstContact).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+
+            <div className="flex flex-col gap-1.5 p-3.5 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="p-1.5 rounded-md bg-indigo-500/10 text-indigo-500">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Messages</span>
+              </div>
+              <p className="text-sm font-medium pl-1">{contact.messages}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Last Active</p>
-              <p className="text-sm font-medium">{new Date(contact.lastActive).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground flex items-center gap-1"><MessageSquare className="h-3 w-3" /> Messages</p>
-              <p className="text-sm font-medium">{contact.messages}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Source</p>
-              <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800">{contact.source}</Badge>
+
+            <div className="flex flex-col gap-1.5 p-3.5 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="p-1.5 rounded-md bg-pink-500/10 text-pink-500">
+                  <Share2 className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Source</span>
+              </div>
+              <div className="pl-1"><Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 border-0">{contact.source}</Badge></div>
             </div>
           </div>
-
-          <Separator />
 
           {/* Timeline */}
-          <div>
-            <h4 className="text-sm font-semibold mb-4">Activity Timeline</h4>
+          {/* Timeline */}
+          <div className="bg-background rounded-3xl p-6 border shadow-sm">
+            <h4 className="text-base font-bold tracking-tight mb-6 flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              Activity Timeline
+            </h4>
             <div className="relative space-y-0">
               {contact.timeline.map((event, idx) => (
-                <div key={idx} className="flex gap-3 pb-6 last:pb-0 relative">
+                <div key={idx} className="flex gap-4 pb-8 last:pb-0 relative">
                   {/* Vertical Line */}
                   {idx < contact.timeline.length - 1 && (
-                    <div className="absolute left-[11px] top-7 w-[2px] h-[calc(100%-12px)] bg-muted" />
+                    <div className="absolute left-[15px] top-8 w-[2px] h-[calc(100%-16px)] bg-gradient-to-b from-border to-transparent" />
                   )}
                   {/* Icon */}
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted shrink-0 z-10">
+                  <div className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full shrink-0 z-10 ring-4 ring-background shadow-sm",
+                    event.type === "dm_received" ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30" : 
+                    event.type === "ai_reply" ? "bg-primary/10 text-primary" : 
+                    "bg-green-50 text-green-600 dark:bg-green-900/30"
+                  )}>
                     {getTimelineIcon(event.type)}
                   </div>
                   {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className={cn(
-                      "text-sm leading-relaxed",
-                      event.type === "captured" ? "text-muted-foreground italic" : ""
+                  <div className="flex-1 min-w-0 pt-1">
+                    <div className={cn(
+                      "text-sm",
+                      event.type === "ai_reply" ? "bg-primary/10 text-foreground p-3 rounded-2xl rounded-tl-sm w-fit max-w-[95%]" : 
+                      event.type === "dm_received" ? "bg-muted text-foreground p-3 rounded-2xl rounded-tr-sm w-fit max-w-[95%]" : 
+                      "text-muted-foreground italic text-sm mt-1"
                     )}>
                       {event.text}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    </div>
+                    <p className="text-xs text-muted-foreground font-medium mt-2 flex items-center gap-1.5">
+                      <Clock className="h-3 w-3" />
                       {formatDateTime(event.time)}
                     </p>
                   </div>

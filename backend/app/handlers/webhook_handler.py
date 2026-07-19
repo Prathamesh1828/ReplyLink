@@ -58,8 +58,20 @@ class WebhookHandler:
                             automation_service.handle_postback(payload_str, sender_id, instagram_business_id)
                     elif "message" in event:
                         print("\nMESSAGE EVENT RECEIVED")
-                        # DM flow to be handled later by FAQ/Knowledge service
-                        pass
+                        message = event["message"]
+                        if "reply_to" in message and "story" in message["reply_to"]:
+                            text = message.get("text", "")
+                            message_id = message.get("mid", f"story_{sender_id}")
+                            print(f"STORY REPLY DETECTED: {text}")
+                            automation_service.handle_story_reply(
+                                text=text,
+                                sender_id=sender_id,
+                                instagram_business_id=instagram_business_id,
+                                message_id=message_id
+                            )
+                        else:
+                            # DM flow to be handled later by FAQ/Knowledge service
+                            pass
         except Exception as e:
             print("\nERROR PROCESSING WEBHOOK in Handler")
             print(str(e))

@@ -53,6 +53,9 @@ class AutomationRepository:
 
         if not data:
             return None
+            
+        from datetime import datetime, timezone
+        data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
         response = supabase.table("automations").update(data).eq("id", automation_id).execute()
         return response.data[0] if response.data else None

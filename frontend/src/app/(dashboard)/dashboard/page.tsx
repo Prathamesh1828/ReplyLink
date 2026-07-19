@@ -19,34 +19,28 @@ export const metadata: Metadata = {
   description: "Overview of your ReplyLink workspace.",
 }
 
-const stats = [
-  {
-    title: "Total Automations",
-    value: "12",
-    description: "Total automations created by the user.",
-    icon: Wand2,
-  },
-  {
-    title: "Messages Sent",
-    value: "14,231",
-    description: "Total Instagram DMs successfully sent by ReplyLink automations.",
-    icon: Instagram,
-  },
-  {
-    title: "Conversations Started",
-    value: "3,102",
-    description: "Total conversations where a contact replied after receiving an automated DM.",
-    icon: Users,
-  },
-  {
-    title: "Link Clicks",
-    value: "1,452",
-    description: "Total tracked clicks on links sent through ReplyLink automations.",
-    icon: MousePointerClick,
-  },
-]
+import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 
-export default function DashboardPage() {
+import { ConnectAccountButton } from "@/components/dashboard/connect-account-button"
+import { createClient } from "@/utils/supabase/server"
+
+export default async function DashboardPage() {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  let isConnected = false
+  if (session) {
+    const { data } = await supabase
+      .from('connected_accounts')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .limit(1)
+      
+    if (data && data.length > 0) {
+      isConnected = true
+    }
+  }
+
   return (
     <div className="flex-1 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-4">
@@ -57,34 +51,18 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Link href="/instagram" className={buttonVariants({ variant: "default" })}>
-            <Instagram className="mr-2 h-4 w-4" />
-            Connect Account
+          <ConnectAccountButton initialIsConnected={isConnected} />
+          <Link href="/templates">
+            <Button variant="outline">
+              <Plus className="mr-2 h-4 w-4" />
+              New Automation
+            </Button>
           </Link>
-          <Button variant="outline">
-            <Plus className="mr-2 h-4 w-4" />
-            New Automation
-          </Button>
         </div>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stat.description}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+        <DashboardStats />
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -104,7 +82,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>
-              Latest interactions handled by AI.
+              Latest interactions handled by ReplyLink.
             </CardDescription>
           </CardHeader>
           <CardContent>

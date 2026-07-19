@@ -10,24 +10,43 @@ import {
 } from "recharts"
 import { useTheme } from "next-themes"
 
-const data = [
-  { name: "Jan 1", messages: 120, leads: 10 },
-  { name: "Jan 5", messages: 300, leads: 40 },
-  { name: "Jan 10", messages: 250, leads: 35 },
-  { name: "Jan 15", messages: 400, leads: 50 },
-  { name: "Jan 20", messages: 350, leads: 45 },
-  { name: "Jan 25", messages: 600, leads: 90 },
-  { name: "Jan 30", messages: 550, leads: 85 },
-]
+import { useState, useEffect } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function OverviewCharts() {
   const { theme } = useTheme()
   const primaryColor = theme === "dark" ? "#6D5EF7" : "#6D5EF7"
   const secondaryColor = theme === "dark" ? "#22C55E" : "#22C55E"
+  
+  const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<{name: string, total: number}[]>([]);
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/api/dashboard/chart")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setChartData(data);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    const skeletonHeights = [40, 65, 35, 75, 45, 80, 50];
+    return (
+      <div className="w-full h-[350px] flex items-end justify-between px-2 pb-8 pt-4">
+        {skeletonHeights.map((height, i) => (
+          <Skeleton key={i} className="w-[10%] rounded-t-sm" style={{ height: `${height}%` }} />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <ResponsiveContainer width="100%" height={350}>
-      <AreaChart data={data}>
+      <AreaChart data={chartData}>
         <defs>
           <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor={primaryColor} stopOpacity={0.3} />
@@ -62,19 +81,11 @@ export function OverviewCharts() {
         />
         <Area
           type="monotone"
-          dataKey="messages"
+          dataKey="total"
           stroke={primaryColor}
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorMessages)"
-        />
-        <Area
-          type="monotone"
-          dataKey="leads"
-          stroke={secondaryColor}
-          strokeWidth={2}
-          fillOpacity={1}
-          fill="url(#colorLeads)"
         />
       </AreaChart>
     </ResponsiveContainer>

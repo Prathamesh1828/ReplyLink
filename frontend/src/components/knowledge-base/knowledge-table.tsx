@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { knowledgeApi, KnowledgeItem } from "@/lib/api/knowledge"
 import { createClient } from "@/utils/supabase/client"
+import { useRealtimeQuery } from "@/hooks/use-realtime-query"
 import {
   Table,
   TableBody,
@@ -45,11 +46,11 @@ export function KnowledgeTable({ onEdit }: KnowledgeTableProps) {
   
   const userId = sessionData?.user?.id || "test_user_id"
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useRealtimeQuery({
     queryKey: ['knowledge', userId],
     queryFn: () => knowledgeApi.getAll(userId as string),
     enabled: !!userId,
-  })
+  }, ['knowledge'])
 
   const deleteMutation = useMutation({
     mutationFn: knowledgeApi.delete,

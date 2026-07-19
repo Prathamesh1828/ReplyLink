@@ -88,36 +88,79 @@ class MetaService:
             return False
 
     @staticmethod
-    def send_dm(recipient_id: str, message: str, button_label: str = "", link_url: str = "", page_access_token: str = "", buttons: list = None) -> bool:
+    def send_dm(recipient_id: str, message: str, button_label: str = "", link_url: str = "", page_access_token: str = "", buttons: list = None, image_url: str = None, comment_id: str = None) -> bool:
         """Sends a direct message to a user on Instagram."""
         url = f"{MetaService.BASE_URL}/me/messages"
         
         # Build the structured message payload if there are buttons or link
         if buttons or (link_url and button_label):
+            if image_url:
+                # Use generic template if we have an image
+                message_payload = {
+                    "attachment": {
+                        "type": "template",
+                        "payload": {
+                            "template_type": "generic",
+                            "elements": [
+                                {
+                                    "title": message[:80] if message else "Message",
+                                    "image_url": image_url,
+                                    "subtitle": message[80:160] if len(message) > 80 else "",
+                                    "buttons": buttons if buttons else [
+                                        {
+                                            "type": "web_url",
+                                            "url": link_url,
+                                            "title": button_label
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            else:
+                # Use button template if we only have text and buttons
+                message_payload = {
+                    "attachment": {
+                        "type": "template",
+                        "payload": {
+                            "template_type": "button",
+                            "text": message[:640], # Button template text limit is 640 chars
+                            "buttons": buttons if buttons else [
+                                {
+                                    "type": "web_url",
+                                    "url": link_url,
+                                    "title": button_label
+                                }
+                            ]
+                        }
+                    }
+                }
+        elif image_url:
+            # Send just an image if no buttons
             message_payload = {
                 "attachment": {
-                    "type": "template",
+                    "type": "image",
                     "payload": {
-                        "template_type": "button",
-                        "text": message[:640], # Button template text limit is 640 chars
-                        "buttons": buttons if buttons else [
-                            {
-                                "type": "web_url",
-                                "url": link_url,
-                                "title": button_label
-                            }
-                        ]
+                        "url": image_url
                     }
                 }
             }
         else:
             message_payload = {"text": message}
 
-        payload = {
-            "recipient": {"id": recipient_id},
-            "message": message_payload,
-            "access_token": page_access_token
-        }
+        if comment_id:
+            payload = {
+                "recipient": {"comment_id": comment_id},
+                "message": message_payload,
+                "access_token": page_access_token
+            }
+        else:
+            payload = {
+                "recipient": {"id": recipient_id},
+                "message": message_payload,
+                "access_token": page_access_token
+            }
         
         with httpx.Client() as client:
             response = client.post(url, json=payload)
@@ -165,6 +208,26 @@ class MetaService:
         return ""
 
     @staticmethod
+    def get_user_profile(user_id: str, access_token: str) -> Optional[str]:
+        """Fetches the Instagram user's username using their IG-scoped ID."""
+        url = f"{MetaService.BASE_URL}/{user_id}"
+        params = {
+            "fields": "username",
+            "access_token": access_token
+        }
+        try:
+            with httpx.Client() as client:
+                response = client.get(url, params=params)
+                if response.status_code == 200:
+                    data = response.json()
+                    return data.get("username")
+                print(f"Error fetching user profile: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Exception fetching user profile: {e}")
+            return None
+
+    @staticmethod
     def get_instagram_media(instagram_id: str, access_token: str) -> List[Dict[str, Any]]:
         """Fetches the user's Instagram media (posts, reels, carousels)."""
         url = f"{MetaService.BASE_URL}/{instagram_id}/media"
@@ -179,6 +242,23 @@ class MetaService:
                 data = response.json()
                 return data.get("data", [])
             print(f"Error fetching Instagram media: {response.text}")
+            return []
+
+    @staticmethod
+    def get_instagram_stories(instagram_id: str, access_token: str) -> List[Dict[str, Any]]:
+        """Fetches the user's active Instagram stories (last 24 hours)."""
+        url = f"{MetaService.BASE_URL}/{instagram_id}/stories"
+        params = {
+            "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp",
+            "access_token": access_token,
+            "limit": 50
+        }
+        with httpx.Client() as client:
+            response = client.get(url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("data", [])
+            print(f"Error fetching Instagram stories: {response.text}")
             return []
 
 meta_service = MetaService()

@@ -5,7 +5,24 @@ from app.repositories.automation_repository import AutomationRepository
 
 from app.core.dependencies import get_current_user
 
+from fastapi import APIRouter, HTTPException, Header, Depends, UploadFile, File
+import shutil
+import uuid
+import os
+
 router = APIRouter(prefix="/api/automations", tags=["Automations"])
+
+@router.post("/upload")
+async def upload_image(file: UploadFile = File(...)):
+    ext = file.filename.split('.')[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    os.makedirs("app/uploads", exist_ok=True)
+    path = f"app/uploads/{filename}"
+    with open(path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
+    return {"url": f"{backend_url}/uploads/{filename}"}
 
 async def get_user_id(x_user_id: Optional[str] = Header(None)):
     # Fallback to the user's REAL authenticated UUID for testing
