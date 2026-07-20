@@ -23,6 +23,7 @@ export interface BuilderState {
   finalLink: string
   finalLinkLabel: string
   uploadedImage: string | null
+  reactToStoryReply?: boolean
   activeStep: number // 1 to 6
   replyRatio: number
   selectedPostIds: string[]
@@ -46,7 +47,7 @@ function getRelativeTime(timestamp?: string) {
   return 'now';
 }
 
-export function PhonePreview({ state, media = [] }: { state: BuilderState, media?: any[] }) {
+export function PhonePreview({ state, media = [], newKeyword = "" }: { state: BuilderState, media?: any[], newKeyword?: string }) {
   const [account, setAccount] = useState<any>(null)
   const [currentTime, setCurrentTime] = useState<string>("")
 
@@ -130,12 +131,14 @@ export function PhonePreview({ state, media = [] }: { state: BuilderState, media
       </div>
 
       {/* Dynamic Screen based on Active Step */}
-      {state.activeStep === 1 ? (
+      {(state.automation_type === 'dm_reply' || state.automation_type === 'auto_reply_dm') ? (
+        <DMScreen state={state} account={account} newKeyword={newKeyword} media={media} />
+      ) : state.activeStep === 1 ? (
         <PostSelectionScreen state={state} account={account} media={media} />
-      ) : state.activeStep === 2 || state.activeStep === 3 ? (
-        <CommentsScreen state={state} account={account} media={media} />
+      ) : state.activeStep === 3 && state.automation_type !== 'auto_reply_story' ? (
+        <CommentsScreen state={state} account={account} media={media} newKeyword={newKeyword} />
       ) : (
-        <DMScreen state={state} account={account} />
+        <DMScreen state={state} account={account} newKeyword={newKeyword} media={media} />
       )}
 
       {/* Bottom Home Indicator */}
@@ -149,6 +152,92 @@ function PostSelectionScreen({ state, account, media = [] }: { state: BuilderSta
   const selectedPost = state.postSelection === 'manual' && state.selectedPostIds.length > 0 && media.length > 0
     ? media.find(m => m.id === state.selectedPostIds[0])
     : null;
+
+  if (state.automation_type === 'auto_reply_story') {
+    return (
+      <div className="flex-1 bg-gradient-to-b from-[#1a1525] to-[#12131a] flex flex-col relative pt-10 pb-4 min-h-0">
+        {/* Story Progress Bar */}
+        <div className="px-3 pt-2">
+           <div className="w-full h-[2px] bg-white/20 rounded-full overflow-hidden">
+             <div className="h-full bg-white w-[75%]" />
+           </div>
+        </div>
+
+        {/* Story Header */}
+        <div className="flex items-center justify-between px-3 pt-3 pb-2">
+          <div className="flex items-center gap-2">
+            {account?.profile_picture_url ? (
+              <img src={account.profile_picture_url} className="w-8 h-8 rounded-full object-cover" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-slate-800" />
+            )}
+            <span className="text-[14px] font-semibold text-white shadow-sm">{account?.username || "username"}</span>
+          </div>
+          <div className="w-6 h-6 flex items-center justify-center">
+             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+               <path d="M14 1.41L12.59 0L7 5.59L1.41 0L0 1.41L5.59 7L0 12.59L1.41 14L7 8.41L12.59 14L14 12.59L8.41 7L14 1.41Z" fill="white"/>
+             </svg>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        {selectedPost ? (
+           <div className="flex-1 relative bg-black mt-2 min-h-0">
+             <img src={selectedPost.media_url || selectedPost.thumbnail_url} className="w-full h-full object-cover" />
+           </div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            {isNoPost ? (
+              <div className="flex flex-col items-center justify-center gap-4 mt-6">
+                <div className="w-[84px] h-[84px] rounded-full bg-white/5 flex items-center justify-center mb-1">
+                  <ImageIcon className="w-10 h-10 text-white/50" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <h3 className="font-bold text-[19px] tracking-tight text-white">No story selected</h3>
+                  <p className="text-[15px] text-blue-100/60 font-medium">Select a story to see the preview.</p>
+                </div>
+              </div>
+            ) : state.postSelection === 'next' ? (
+              <div className="flex flex-col items-center justify-center gap-4 mt-6">
+                 <div className="w-[84px] h-[84px] rounded-full bg-[#5c4ce5]/20 flex items-center justify-center mb-1">
+                   <div className="w-9 h-9 rounded-full border-[2.5px] border-[#a176ff] flex items-center justify-center">
+                      <PlusCircle className="w-5 h-5 text-[#a176ff] stroke-[3]" />
+                   </div>
+                 </div>
+                 <div className="flex flex-col gap-2">
+                   <h3 className="font-bold text-[19px] text-white">Next Story</h3>
+                   <p className="text-[15px] text-blue-100/60 font-medium leading-relaxed">This automation will work with your<br/>next published story.</p>
+                 </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-4 mt-6">
+                 <div className="w-[84px] h-[84px] rounded-full bg-[#5c4ce5]/20 flex items-center justify-center mb-1">
+                   <div className="w-9 h-9 rounded-full border-[2.5px] border-[#a176ff] flex items-center justify-center">
+                      <Check className="w-5 h-5 text-[#a176ff] stroke-[3.5]" />
+                   </div>
+                 </div>
+                 <div className="flex flex-col gap-2">
+                   <h3 className="font-bold text-[19px] text-white">All Stories</h3>
+                   <p className="text-[15px] text-blue-100/60 font-medium leading-relaxed">This automation will work with all of<br/>your stories.</p>
+                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bottom Input Area */}
+        <div className="px-3 pt-4 pb-1">
+          <div className="flex items-center gap-4">
+             <div className="flex-1 h-[42px] border border-white/20 rounded-full flex items-center px-4 bg-transparent">
+               <span className="text-[14px] text-white/60 font-medium tracking-wide">Send message...</span>
+             </div>
+             <Heart className="w-[26px] h-[26px] text-white shrink-0" />
+             <Send className="w-[24px] h-[24px] text-white shrink-0 transform -rotate-12" />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 bg-[#0f1115] flex flex-col relative pt-12 pb-2">
@@ -402,7 +491,7 @@ function CommentsScreen({ state, account, media = [] }: { state: BuilderState, a
   )
 }
 
-function DMScreen({ state, account }: { state: BuilderState, account: any }) {
+function DMScreen({ state, account, newKeyword = "", media = [] }: { state: BuilderState, account: any, newKeyword?: string, media?: any[] }) {
   return (
     <div className="flex-1 bg-[#0f1115] flex flex-col relative pt-12 pb-2 min-h-0">
       {/* Header */}
@@ -427,6 +516,24 @@ function DMScreen({ state, account }: { state: BuilderState, account: any }) {
       {/* Messages */}
       <div className="flex-1 p-4 overflow-y-auto space-y-6 min-h-0">
         
+        {/* Lead User sends keyword DM */}
+        <div className="flex flex-col items-end gap-1.5 mt-2 mb-8">
+          {state.automation_type === 'auto_reply_story' && (
+             <div className="bg-[#262626] rounded-2xl p-1.5 flex items-center gap-3 pr-4 max-w-[75%] relative">
+                <img src={media?.[0]?.media_url || media?.[0]?.thumbnail_url || "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=500&h=500&fit=crop"} className="w-10 h-14 object-cover rounded-xl" />
+                <span className="text-[14px] text-white/80">Replied to your story</span>
+             </div>
+          )}
+          <div className="bg-[#5c4ce5] px-5 py-2.5 rounded-3xl text-[15px] text-white max-w-[75%] relative">
+            {state.keywordType === 'any' ? "Awesome!" : (newKeyword || state.keywords[0] || "link")}
+            {state.reactToStoryReply && (
+              <div className="absolute -bottom-2 -left-2 bg-[#262626] rounded-full flex items-center justify-center text-[11px] w-[22px] h-[22px] shadow-sm ring-2 ring-[#0f1115] z-10">
+                ❤️
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Opening Message Section */}
         {state.openingMessageEnabled && (
           <div className="flex flex-col gap-3">

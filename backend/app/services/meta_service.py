@@ -170,6 +170,26 @@ class MetaService:
             return False
 
     @staticmethod
+    def react_to_message(recipient_id: str, message_id: str, emoji: str, page_access_token: str) -> bool:
+        """Sends a reaction to an Instagram DM/story reply."""
+        url = f"{MetaService.BASE_URL}/me/messages"
+        payload = {
+            "recipient": {"id": recipient_id},
+            "sender_action": "react",
+            "payload": {
+                "message_id": message_id,
+                "reaction": emoji
+            },
+            "access_token": page_access_token
+        }
+        with httpx.Client() as client:
+            response = client.post(url, json=payload)
+            if response.status_code == 200:
+                return True
+            print(f"Error reacting to message: {response.text}")
+            return False
+
+    @staticmethod
     def check_user_follows_business(user_id: str, page_access_token: str) -> bool:
         """Checks if a user (via their IG-scoped ID) follows the business account."""
         url = f"{MetaService.BASE_URL}/{user_id}"

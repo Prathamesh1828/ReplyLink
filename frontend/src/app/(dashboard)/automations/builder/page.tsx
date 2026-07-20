@@ -96,7 +96,7 @@ export default function AutomationBuilderPage() {
     automationName: "New Automation",
     postSelection: "all",
     keywordType: "specific",
-    keywords: ["link", "buy", "shop", "promo"],
+    keywords: [],
     publicReplyEnabled: false,
     publicReplies: [
       "Please check the DM",
@@ -126,6 +126,10 @@ export default function AutomationBuilderPage() {
   const [tempLinkLabel, setTempLinkLabel] = useState("")
   const [tempLinkUrl, setTempLinkUrl] = useState("")
   
+  const [isNameModalOpen, setIsNameModalOpen] = useState(false)
+  const [tempName, setTempName] = useState("")
+  const [nameError, setNameError] = useState(false)
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const id = params.get('id')
@@ -145,7 +149,8 @@ export default function AutomationBuilderPage() {
         })
         .catch(err => console.error("Failed to load automation:", err))
     } else {
-      setEditingName(true)
+      setIsNameModalOpen(true)
+      
       if (type) {
         updateState({ automation_type: type })
       }
@@ -210,8 +215,16 @@ export default function AutomationBuilderPage() {
   const saveAutomation = async () => {
     setIsSaving(true)
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/automations/', {
-        method: 'POST',
+      const params = new URLSearchParams(window.location.search)
+      const id = params.get('id')
+      
+      const method = id ? 'PUT' : 'POST'
+      const url = id 
+        ? `http://127.0.0.1:8000/api/automations/${id}`
+        : 'http://127.0.0.1:8000/api/automations/'
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: state.automationName,
@@ -403,14 +416,23 @@ export default function AutomationBuilderPage() {
                                    {item.media_type === 'VIDEO' ? '🎥' : item.media_type === 'CAROUSEL_ALBUM' ? '📚' : '🖼'}
                                  </div>
                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6 flex items-center gap-3 text-xs text-white font-medium">
-                                   <div className="flex items-center gap-1">
-                                     <Heart className="w-3.5 h-3.5" />
-                                     {item.like_count || 0}
-                                   </div>
-                                   <div className="flex items-center gap-1">
-                                     <MessageCircle className="w-3.5 h-3.5" />
-                                     {item.comments_count || 0}
-                                   </div>
+                                   {state.automation_type === 'auto_reply_story' ? (
+                                     <div className="flex w-full justify-between items-center text-[10.5px] font-semibold tracking-wide">
+                                       <span>{new Date(item.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                       <span>{new Date(item.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
+                                     </div>
+                                   ) : (
+                                     <>
+                                       <div className="flex items-center gap-1">
+                                         <Heart className="w-3.5 h-3.5" />
+                                         {item.like_count || 0}
+                                       </div>
+                                       <div className="flex items-center gap-1">
+                                         <MessageCircle className="w-3.5 h-3.5" />
+                                         {item.comments_count || 0}
+                                       </div>
+                                     </>
+                                   )}
                                  </div>
                                  {isSelected && (
                                    <div className="absolute inset-0 bg-indigo-600/20 flex items-center justify-center backdrop-blur-[1px]">
@@ -458,7 +480,7 @@ export default function AutomationBuilderPage() {
                    <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", state.keywordType === 'specific' ? "border-indigo-600" : "border-slate-300")}>
                       {state.keywordType === 'specific' && <div className="w-2 h-2 bg-indigo-600 rounded-full" />}
                    </div>
-                   <span className="font-medium text-sm">Specific keyword(s)</span>
+                   <span className="font-medium text-sm">Specific keyword or reaction</span>
                  </div>
                  
                  {state.keywordType === 'specific' && (
@@ -474,7 +496,7 @@ export default function AutomationBuilderPage() {
                          </div>
                        ))}
                        <input 
-                         placeholder={state.keywords.length === 0 ? "e.g. link, buy, details" : ""}
+                         placeholder={state.keywords.length === 0 ? "Enter keyword that will trigger the automations" : ""}
                          value={newKeyword}
                          onChange={e => setNewKeyword(e.target.value)}
                          className="flex-1 bg-transparent min-w-[120px] outline-none placeholder:text-muted-foreground"
@@ -491,7 +513,7 @@ export default function AutomationBuilderPage() {
                          }}
                        />
                      </div>
-                     <p className="text-xs text-muted-foreground mt-1">Hint: Press Enter to add keywords...</p>
+                     <p className="text-xs text-muted-foreground mt-2">Hint: Type a keyword and press Enter, or select from the examples below.</p>
                      
                      <div className="flex items-center gap-2 text-sm pt-2">
                        <span className="text-muted-foreground">Examples:</span>
@@ -527,7 +549,26 @@ export default function AutomationBuilderPage() {
             </div>
           </div>
 
-          {/* STEP 3 */}
+          {/* STEP 3 (Story React) */}
+          {state.automation_type === 'auto_reply_story' && (
+            <div 
+              className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 3 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
+              onClick={() => updateState({ activeStep: 3 })}
+            >
+              <div className="p-4 flex gap-3 items-center justify-between">
+                 <div className="flex gap-3 items-center">
+                   <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0">{getStepNumber(3)}</div>
+                   <div className="flex flex-col">
+                     <h3 className="font-semibold text-foreground flex items-center gap-1.5">React story replies with ❤️</h3>
+                     <p className="text-[13px] text-muted-foreground mt-0.5">Automatically react to story replies with a heart emoji</p>
+                   </div>
+                 </div>
+                 <Toggle checked={state.reactToStoryReply || false} onChange={v => updateState({ reactToStoryReply: v })} />
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3 (Comments React) */}
           {state.automation_type !== 'auto_reply_story' && state.automation_type !== 'dm_reply' && state.automation_type !== 'auto_reply_dm' && (
           <div 
             className={cn("bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300", state.activeStep === 3 ? "ring-2 ring-indigo-500 border-transparent" : "opacity-80 hover:opacity-100")}
@@ -1059,10 +1100,86 @@ export default function AutomationBuilderPage() {
         
         {/* Scaled Container for Phone Preview */}
         <div className="transform scale-[0.8] xl:scale-[0.85] origin-center transition-transform">
-          <PhonePreview state={state} media={media} />
+          <PhonePreview state={state} media={media} newKeyword={newKeyword} />
         </div>
       </div>
 
+      <Dialog open={isNameModalOpen} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-indigo-500" />
+              </div>
+              <DialogTitle className="text-xl">Name Your Automation</DialogTitle>
+            </div>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-[15px] text-muted-foreground mb-6">
+              Give your automation a descriptive name to easily identify it later.
+            </p>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium mb-2.5">Automation Name</label>
+              <input
+                type="text"
+                placeholder="e.g., Message Responder"
+                value={tempName}
+                onChange={(e) => {
+                  setTempName(e.target.value)
+                  if (e.target.value.trim()) setNameError(false)
+                }}
+                maxLength={50}
+                className={cn(
+                  "flex h-11 w-full rounded-md border bg-transparent px-3 py-2 text-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm",
+                  nameError ? "border-red-500 focus-visible:ring-red-500" : "border-input"
+                )}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (!tempName.trim()) {
+                      setNameError(true)
+                      return
+                    }
+                    updateState({ automationName: tempName.trim() })
+                    setIsNameModalOpen(false)
+                  }
+                }}
+              />
+              <div className="flex items-center justify-between mt-1.5">
+                {nameError ? (
+                  <span className="text-xs font-medium text-red-500 flex items-center gap-1">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    Please enter an automation name
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <span className={cn("text-xs", nameError ? "text-red-500" : "text-muted-foreground")}>
+                  {tempName.length}/50 characters
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => router.push('/templates')}>
+              Cancel
+            </Button>
+            <Button 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white" 
+              onClick={() => {
+                if (!tempName.trim()) {
+                  setNameError(true)
+                  return
+                }
+                updateState({ automationName: tempName.trim() })
+                setIsNameModalOpen(false)
+              }}
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -179,6 +179,9 @@ class AutomationService:
                     from app.services.meta_service import MetaService
                     fetched_username = MetaService.get_user_profile(sender_id, page_access_token)
                     
+                    if config.get("reactToStoryReply"):
+                        MetaService.react_to_message(sender_id, message_id, "❤️", page_access_token)
+                    
                     run_data = {
                         "automation_id": auto["id"],
                         "comment_id": message_id,

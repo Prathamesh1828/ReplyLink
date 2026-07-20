@@ -86,12 +86,23 @@ export function AutomationsTable() {
   const [search, setSearch] = useState("")
   const [templateFilter, setTemplateFilter] = useState("all")
   const [automationToDelete, setAutomationToDelete] = useState<{id: string, name: string} | null>(null)
+  const [deleteCountdown, setDeleteCountdown] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 10
 
   useEffect(() => {
     setCurrentPage(1)
   }, [search, templateFilter])
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (automationToDelete && deleteCountdown > 0) {
+      timer = setTimeout(() => {
+        setDeleteCountdown(prev => prev - 1)
+      }, 1000)
+    }
+    return () => clearTimeout(timer)
+  }, [automationToDelete, deleteCountdown])
 
   const getTimeAgo = (dateStr: string) => {
     if (!dateStr) return "-";
@@ -192,6 +203,7 @@ export function AutomationsTable() {
       const automation = automations.find(a => a.id === id)
       if (automation) {
         setAutomationToDelete({ id, name: automation.name })
+        setDeleteCountdown(3)
       }
     } else {
       toast.success(`Action '${action}' triggered for ${id}`)
@@ -419,8 +431,13 @@ export function AutomationsTable() {
             <Button variant="outline" onClick={() => setAutomationToDelete(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete} 
+              disabled={deleteCountdown > 0}
+              className="bg-[#ff5b5b] hover:bg-[#ff4040]"
+            >
+              {deleteCountdown > 0 ? `Delete (${deleteCountdown})` : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -20,6 +20,7 @@ class BuilderStateSchema(BaseModel):
     finalLink: str
     finalLinkLabel: str
     uploadedImage: Optional[str] = None
+    reactToStoryReply: Optional[bool] = False
     activeStep: Optional[int] = 1
     replyRatio: Optional[int] = 100
     selectedPostIds: Optional[List[str]] = None
