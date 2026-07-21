@@ -9,7 +9,7 @@ from app.schemas.knowledge import (
 from app.services import knowledge_service
 
 router = APIRouter(
-    prefix="/knowledge",
+    prefix="/api/knowledge",
     tags=["Knowledge Base"],
 )
 

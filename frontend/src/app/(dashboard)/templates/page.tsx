@@ -122,7 +122,7 @@ export default function TemplatesPage() {
               <CardFooter className="pt-2 pb-6">
                 {isActive ? (
                   <Link 
-                    href={`/automations/builder?type=${template.id}`} 
+                    href={template.isAi ? `/ai-agent` : `/automations/builder?type=${template.id}`} 
                     className={cn(buttonVariants({ variant: "default" }), "w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors border-none shadow-sm")}
                   >
                     Use Template <ArrowRight className="ml-2 h-4 w-4" />

@@ -439,4 +439,117 @@ class AutomationService:
         # 4. Trigger next step
         self.trigger_next_sequence_step(run_id, config, sender_id, page_access_token, instagram_business_id, step)
 
+    @staticmethod
+    def handle_dm(text: str, sender_id: str, instagram_business_id: str, message_id: str):
+        print(f"Handling standard DM from {sender_id}: {text}")
+        
+        # 1. Fetch the linked account to get user_id and access_token
+        account = account_service.get_account_by_instagram_id(instagram_business_id)
+        if not account:
+            return
+            
+        user_id = account.get("user_id")
+        page_access_token = account.get("page_access_token")
+        
+        # 2. Check if AI Agent is active
+        try:
+            agent_res = supabase.table("ai_agents").select("*").eq("instagram_account_id", instagram_business_id).eq("user_id", user_id).execute()
+            
+            if not agent_res.data or not agent_res.data[0].get("is_active"):
+                print("AI Agent is not active or not found. Ignoring standard DM.")
+                return
+                
+            agent_settings = agent_res.data[0]
+            persona = agent_settings.get("persona", "You are a helpful assistant.")
+            fallback = agent_settings.get("fallback_message", "I am having trouble understanding right now.")
+            cal_booking_link = agent_settings.get("cal_booking_link", "")
+            
+            # 3. Retrieve relevant knowledge
+            from app.services.knowledge_service import search_relevant_knowledge
+            from app.services.ai_service import generate_ai_response
+            
+            knowledge_results = search_relevant_knowledge(user_id=user_id, user_message=text, limit=3)
+            
+            context = ""
+            if knowledge_results:
+                context = "\n".join([f"Q: {k['question']}\nA: {k['answer']}" for k in knowledge_results])
+                
+            if not context:
+                context = "No specific knowledge found. Answer generally if possible."
+                
+            cal_instructions = ""
+            if cal_booking_link:
+                cal_instructions = f"\nYou have a Cal.com booking link available: {cal_booking_link}. If the user expresses interest in booking a call or meeting, naturally qualify them and share this link."
+
+            # 4. Generate AI response
+            prompt = f"""
+{persona}
+{cal_instructions}
+
+You have the following knowledge base to answer the user's question:
+---
+{context}
+---
+
+User's message: "{text}"
+
+If the answer is in the knowledge base, use it to answer. If not, try to be helpful or guide them appropriately based on your persona.
+Keep your response concise and conversational, suitable for an Instagram DM. Do not use markdown.
+"""
+            ai_reply = generate_ai_response(prompt)
+            
+            if ai_reply:
+                print(f"AI Agent generated reply: {ai_reply}")
+                meta_service.send_dm(
+                    recipient_id=sender_id,
+                    message=ai_reply,
+                    page_access_token=page_access_token
+                )
+                
+                # Fetch username for logging
+                from app.services.meta_service import MetaService
+                fetched_username = MetaService.get_user_profile(sender_id, page_access_token) or "Instagram User"
+                
+                # Get or create a proxy automation for the AI Agent
+                ai_auto_res = supabase.table("automations").select("id").eq("user_id", user_id).eq("automation_type", "ai_agent").execute()
+                if ai_auto_res.data:
+                    ai_automation_id = ai_auto_res.data[0]["id"]
+                else:
+                    new_auto = supabase.table("automations").insert({
+                        "user_id": user_id,
+                        "name": "AI Agent",
+                        "automation_type": "ai_agent",
+                        "status": "Active",
+                        "config": {},
+                        "active": True,
+                        "keyword": "AI_AGENT",
+                        "dm_message": "AI Generated Reply",
+                        "link": ""
+                    }).execute()
+                    ai_automation_id = new_auto.data[0]["id"]
+                
+                # Log to automation_runs
+                run_data = {
+                    "automation_id": ai_automation_id,
+                    "comment_id": message_id,
+                    "username": fetched_username,
+                    "status": "success",
+                    "instagram_account": instagram_business_id,
+                    "keyword": "AI_AGENT_DM",
+                    "comment": text,
+                    "dm_sent": True,
+                    "public_reply_sent": False
+                }
+                
+                supabase.table("automation_runs").insert(run_data).execute()
+            else:
+                meta_service.send_dm(
+                    recipient_id=sender_id,
+                    message=fallback,
+                    page_access_token=page_access_token
+                )
+                
+        except Exception as e:
+            print(f"Error handling DM with AI Agent: {e}")
+
 automation_service = AutomationService()

@@ -23,10 +23,10 @@ const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Automations", href: "/automations", icon: Wand2 },
   { title: "Templates", href: "/templates", icon: MessageSquare },
-  { title: "Knowledge Base", href: "/knowledge-base", icon: BookOpen },
+  { title: "Knowledge Base", href: "/knowledge", icon: BookOpen },
   { title: "Contacts", href: "/contacts", icon: Users },
   { title: "Instagram", href: "/instagram", icon: Instagram },
-  { title: "AI Settings", href: "/ai-settings", icon: Sparkles },
+  { title: "AI Agent", href: "/ai-agent", icon: Sparkles },
 ]
 
 const bottomNavItems = [

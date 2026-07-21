@@ -20,6 +20,8 @@ export function RecentActivity() {
 
   const getTemplateIcon = (type: string) => {
     switch (type) {
+      case 'ai_agent':
+        return { Icon: Wand2, bgClass: "bg-purple-500 text-white" };
       case 'auto_dm_comments':
         return { Icon: MessageCircle, bgClass: "bg-[#0ea5e9] text-white" };
       case 'story_reply':
@@ -75,6 +77,7 @@ export function RecentActivity() {
             <div className="ml-4 space-y-1 flex-1">
               <p className="text-sm font-medium leading-none">
                 @{item.username} {
+                  item.automation_type === 'ai_agent' ? 'messaged you' : 
                   item.automation_type === 'auto_reply_story' ? 'replied to your story' : 
                   (item.automation_type === 'auto_reply_dm' || item.automation_type === 'dm_reply') ? 'sent you a DM' : 
                   'commented'
@@ -84,7 +87,8 @@ export function RecentActivity() {
                 "{item.comment}"
               </p>
               <p className="text-xs text-muted-foreground pt-1">
-                Automated DM sent via <span className="font-medium text-foreground">{item.automation_name}</span>
+                {item.automation_type === 'ai_agent' ? 'AI Agent handled via ' : 'Automated DM sent via '}
+                <span className="font-medium text-foreground">{item.automation_name}</span>
               </p>
             </div>
             <div className="ml-auto font-medium text-xs text-muted-foreground whitespace-nowrap pl-2">

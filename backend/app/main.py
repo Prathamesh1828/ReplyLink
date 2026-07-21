@@ -11,6 +11,7 @@ from app.api.auth import router as auth_router
 from app.api.accounts import router as accounts_router
 from app.api.tracking import router as tracking_router
 from app.api.dashboard import router as dashboard_router
+from app.api.ai_agents import router as ai_agents_router
 
 # --------------------------------------------------
 # Load Environment Variables
@@ -50,6 +51,7 @@ app.include_router(auth_router)
 app.include_router(automations_router)
 app.include_router(accounts_router)
 app.include_router(dashboard_router)
+app.include_router(ai_agents_router)
 app.include_router(knowledge_router)
 app.include_router(tracking_router)
 app.include_router(contacts_router, prefix="/api", tags=["contacts"])
