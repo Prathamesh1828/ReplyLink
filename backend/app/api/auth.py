@@ -56,20 +56,20 @@ def meta_callback(request: Request):
 
     if error:
         print(f"Meta OAuth Error: {error} - {error_description}")
-        return RedirectResponse(url="http://localhost:3000/instagram?error=access_denied")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/instagram?error=access_denied")
         
     if not code or not state:
-        return RedirectResponse(url="http://localhost:3000/instagram?error=invalid_request")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/instagram?error=invalid_request")
         
     user_id = account_repository.get_user_from_session(state)
     if not user_id:
-        return RedirectResponse(url="http://localhost:3000/instagram?error=invalid_state")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/instagram?error=invalid_state")
         
     account_repository.delete_oauth_session(state)
     
     short_lived_token = meta_service.exchange_code_for_token(code)
     if not short_lived_token:
-        return RedirectResponse(url="http://localhost:3000/instagram?error=token_exchange_failed")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/instagram?error=token_exchange_failed")
         
     long_lived_token = meta_service.get_long_lived_token(short_lived_token)
     if not long_lived_token:
@@ -81,7 +81,7 @@ def meta_callback(request: Request):
     ig_pages = [p for p in pages if "instagram_business_account" in p]
     
     if len(ig_pages) == 0:
-        return RedirectResponse(url="http://localhost:3000/instagram?error=no_instagram_account")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/instagram?error=no_instagram_account")
         
     if len(ig_pages) == 1:
         # Just one page, auto connect it
@@ -97,7 +97,7 @@ def meta_callback(request: Request):
         # Crucial: Subscribe the page to our App's Webhooks!
         meta_service.subscribe_page_to_webhooks(page.get("id"), page.get("access_token"))
         
-        return RedirectResponse(url="http://localhost:3000/instagram?success=true")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/instagram?success=true")
         
     # If multiple pages, we need the user to select.
     # We will safely encode the data into a base64 string to pass via URL parameter
@@ -118,7 +118,7 @@ def meta_callback(request: Request):
         # Subscribe them anyway so when activated, they receive webhooks
         meta_service.subscribe_page_to_webhooks(page.get("id"), page.get("access_token"))
         
-    return RedirectResponse(url="http://localhost:3000/instagram/select-page")
+    return RedirectResponse(url=f"{settings.FRONTEND_URL}/instagram/select-page")
 
 @router.get("/meta/media")
 def get_user_meta_media(x_user_id: Optional[str] = Header(None)):

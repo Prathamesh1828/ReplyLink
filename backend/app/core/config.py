@@ -10,6 +10,7 @@ class Settings:
     META_APP_ID = os.getenv("META_APP_ID")
     META_APP_SECRET = os.getenv("META_APP_SECRET")
     META_REDIRECT_URI = os.getenv("META_REDIRECT_URI")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
     SECRET_KEY = os.getenv("SECRET_KEY")
     ALGORITHM = os.getenv("ALGORITHM")

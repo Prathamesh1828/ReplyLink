@@ -118,9 +118,16 @@ export default function AuthLayout({
           </motion.div>
 
           {/* Trust Indicator Footer */}
-          <div className="mt-8 flex items-center justify-center gap-2 text-[13px] text-slate-500">
-            <Lock className="h-3.5 w-3.5" />
-            <span>Secure authentication powered by Supabase</span>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 text-[13px] text-slate-500">
+            <div className="flex items-center gap-2">
+              <Lock className="h-3.5 w-3.5" />
+              <span>Secure authentication powered by Supabase</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <a href="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
+              <span>•</span>
+              <a href="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</a>
+            </div>
           </div>
         </div>
       </div>
