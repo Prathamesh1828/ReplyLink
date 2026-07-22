@@ -23,7 +23,7 @@ class AutomationRepository:
 
     @staticmethod
     def get_automations_by_user(user_id: str) -> List[dict]:
-        response = supabase.table("automations").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        response = supabase.table("automations").select("*").eq("user_id", user_id).neq("automation_type", "ai_agent").order("created_at", desc=True).execute()
         return response.data
 
     @staticmethod

@@ -4,7 +4,6 @@ import { Menu, Search, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "./theme-toggle"
-import { UserNav } from "./user-nav"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Sidebar } from "./sidebar"
 
@@ -32,7 +31,6 @@ export function TopNav() {
       <div className="flex flex-1 items-center justify-end space-x-4">
         <div className="flex items-center gap-2">
            <ThemeToggle />
-           <UserNav />
         </div>
       </div>
     </header>

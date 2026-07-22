@@ -11,6 +11,7 @@ class AIAgentConfig(BaseModel):
     persona: str
     fallback_message: Optional[str] = "I'm having trouble understanding right now. Please try again later."
     cal_booking_link: Optional[str] = ""
+    config: Optional[dict] = {}
 
 @router.get("/{account_id}")
 def get_ai_agent(account_id: str, user_id: str = Depends(get_current_user)):
@@ -26,7 +27,8 @@ def get_ai_agent(account_id: str, user_id: str = Depends(get_current_user)):
                 "is_active": False,
                 "persona": "You are a helpful and polite sales assistant.",
                 "fallback_message": "I'm having trouble understanding right now. Please try again later.",
-                "cal_booking_link": ""
+                "cal_booking_link": "",
+                "config": {}
             }
     except Exception as e:
         print(f"Error fetching AI agent: {e}")
@@ -36,7 +38,8 @@ def get_ai_agent(account_id: str, user_id: str = Depends(get_current_user)):
             "is_active": False,
             "persona": "You are a helpful and polite sales assistant.",
             "fallback_message": "I'm having trouble understanding right now. Please try again later.",
-            "cal_booking_link": ""
+            "cal_booking_link": "",
+            "config": {}
         }
 
 @router.put("/{account_id}")
@@ -51,7 +54,8 @@ def update_ai_agent(account_id: str, config: AIAgentConfig, user_id: str = Depen
             "is_active": config.is_active,
             "persona": config.persona,
             "fallback_message": config.fallback_message,
-            "cal_booking_link": config.cal_booking_link
+            "cal_booking_link": config.cal_booking_link,
+            "config": config.config
         }
         
         if existing.data and len(existing.data) > 0:

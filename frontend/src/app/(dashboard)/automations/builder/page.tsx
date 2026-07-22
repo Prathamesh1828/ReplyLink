@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Play, X, Plus, Sparkles, MessageCircle, PlusCircle, MessagesSquare, Info, Image as ImageIcon, Link as LinkIcon, Smile, Trash2, Edit2, Check, ExternalLink, Loader2, Heart } from "lucide-react"
+import { ArrowLeft, Play, X, Plus, Sparkles, MessageCircle, PlusCircle, MessagesSquare, Info, Image as ImageIcon, Link as LinkIcon, Smile, Trash2, Edit2, Check, ExternalLink, Loader2, Heart, AlertTriangle } from "lucide-react"
 import { Instagram } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -130,12 +130,16 @@ export default function AutomationBuilderPage() {
   const [tempName, setTempName] = useState("")
   const [nameError, setNameError] = useState(false)
 
+  const [isLimitReached, setIsLimitReached] = useState(false)
+  const [isLoadingCheck, setIsLoadingCheck] = useState(true)
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const id = params.get('id')
     const type = params.get('type')
     
     if (id) {
+      setIsLoadingCheck(false)
       fetch(`http://127.0.0.1:8000/api/automations/${id}`)
         .then(res => res.json())
         .then(data => {
@@ -149,11 +153,26 @@ export default function AutomationBuilderPage() {
         })
         .catch(err => console.error("Failed to load automation:", err))
     } else {
-      setIsNameModalOpen(true)
-      
       if (type) {
         updateState({ automation_type: type })
       }
+      
+      // Check limits before allowing creation
+      fetch("http://127.0.0.1:8000/api/automations/")
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length >= 5) {
+            setIsLimitReached(true)
+          } else {
+            setIsNameModalOpen(true)
+          }
+          setIsLoadingCheck(false)
+        })
+        .catch(err => {
+          console.error("Failed to check limits", err)
+          setIsNameModalOpen(true)
+          setIsLoadingCheck(false)
+        })
     }
   }, [])
   
@@ -270,6 +289,26 @@ export default function AutomationBuilderPage() {
   }
 
   return (
+    <>
+      {isLoadingCheck ? (
+        <div className="flex h-[50vh] items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        </div>
+      ) : isLimitReached ? (
+        <div className="flex flex-col h-[50vh] items-center justify-center p-8 text-center space-y-4">
+          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground">Free Tier Limit Reached</h2>
+          <p className="text-muted-foreground max-w-md pb-4">
+            You have reached the maximum number of automations (5) allowed on your current plan. Please upgrade to create more automations.
+          </p>
+          <Button onClick={() => router.back()} className="bg-indigo-600 hover:bg-indigo-700">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      ) : (
     <div className="flex h-[calc(100vh-theme(spacing.16))] overflow-hidden -mx-6 -mt-6">
       
       {/* LEFT COLUMN: Configuration Form */}
@@ -899,11 +938,11 @@ export default function AutomationBuilderPage() {
                <div>
                  <div className="flex justify-between items-center mb-2">
                    <span className="font-medium text-sm">Message</span>
-                   <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{state.finalMessage.length} / 1000</span>
+                   <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{(state.finalMessage || '').length} / 1000</span>
                  </div>
                  <div className="relative">
                     <Textarea 
-                      value={state.finalMessage}
+                      value={state.finalMessage || ''}
                       onChange={e => updateState({ finalMessage: e.target.value })}
                       className="min-h-[100px] resize-none pr-10"
                     />
@@ -1181,5 +1220,7 @@ export default function AutomationBuilderPage() {
         </DialogContent>
       </Dialog>
     </div>
+    )}
+    </>
   )
 }

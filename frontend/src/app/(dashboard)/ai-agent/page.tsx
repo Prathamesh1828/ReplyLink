@@ -3,21 +3,40 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Sparkles, Save, Loader2 } from "lucide-react"
+import { Sparkles, Save, Loader2, GripVertical, Plus, Trash2, Calendar } from "lucide-react"
 import { toast } from "sonner"
-import { useQueryClient } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 import { useRouter } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function AIAgentPage() {
   const router = useRouter()
   const supabase = createClient()
+  
+  // Base State
   const [isActive, setIsActive] = useState(false)
   const [persona, setPersona] = useState("")
   const [fallbackMessage, setFallbackMessage] = useState("")
   const [calBookingLink, setCalBookingLink] = useState("")
+  
+  // Config State
+  const [aiGoal, setAiGoal] = useState("Sales Assistant")
+  const [tone, setTone] = useState("Friendly")
+  const [replyDelay, setReplyDelay] = useState("Instant")
+  const [messageLength, setMessageLength] = useState("Short")
+  const [useEmojis, setUseEmojis] = useState(true)
+  const [conversationMemory, setConversationMemory] = useState(true)
+  const [leadQualificationEnabled, setLeadQualificationEnabled] = useState(false)
+  const [qualificationQuestions, setQualificationQuestions] = useState<string[]>([
+    "Name", "Email", "Phone Number", "Budget", "Business / Requirement"
+  ])
+  const [bookingProvider, setBookingProvider] = useState("cal.com")
+  const [aiTrigger, setAiTrigger] = useState("Every Incoming Message")
+  const [humanHandoffEnabled, setHumanHandoffEnabled] = useState(false)
+  const [humanHandoffTriggers, setHumanHandoffTriggers] = useState<string[]>([])
+  
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [accountId, setAccountId] = useState<string | null>(null)
@@ -53,6 +72,22 @@ export default function AIAgentPage() {
             setPersona(settings.persona || "")
             setFallbackMessage(settings.fallback_message || "")
             setCalBookingLink(settings.cal_booking_link || "")
+            
+            if (settings.config) {
+              const cfg = settings.config
+              if (cfg.aiGoal) setAiGoal(cfg.aiGoal)
+              if (cfg.tone) setTone(cfg.tone)
+              if (cfg.replyDelay) setReplyDelay(cfg.replyDelay)
+              if (cfg.messageLength) setMessageLength(cfg.messageLength)
+              if (cfg.useEmojis !== undefined) setUseEmojis(cfg.useEmojis)
+              if (cfg.conversationMemory !== undefined) setConversationMemory(cfg.conversationMemory)
+              if (cfg.leadQualificationEnabled !== undefined) setLeadQualificationEnabled(cfg.leadQualificationEnabled)
+              if (cfg.qualificationQuestions) setQualificationQuestions(cfg.qualificationQuestions)
+              if (cfg.bookingProvider) setBookingProvider(cfg.bookingProvider)
+              if (cfg.aiTrigger) setAiTrigger(cfg.aiTrigger)
+              if (cfg.humanHandoffEnabled !== undefined) setHumanHandoffEnabled(cfg.humanHandoffEnabled)
+              if (cfg.humanHandoffTriggers) setHumanHandoffTriggers(cfg.humanHandoffTriggers)
+            }
           }
         }
       } catch (err) {
@@ -90,7 +125,21 @@ export default function AIAgentPage() {
           is_active: isActive,
           persona,
           fallback_message: fallbackMessage,
-          cal_booking_link: calBookingLink
+          cal_booking_link: calBookingLink,
+          config: {
+            aiGoal,
+            tone,
+            replyDelay,
+            messageLength,
+            useEmojis,
+            conversationMemory,
+            leadQualificationEnabled,
+            qualificationQuestions,
+            bookingProvider,
+            aiTrigger,
+            humanHandoffEnabled,
+            humanHandoffTriggers
+          }
         })
       })
       
@@ -107,8 +156,32 @@ export default function AIAgentPage() {
     }
   }
 
+  const addQuestion = () => {
+    setQualificationQuestions([...qualificationQuestions, ""])
+  }
+  
+  const updateQuestion = (index: number, val: string) => {
+    const newQ = [...qualificationQuestions]
+    newQ[index] = val
+    setQualificationQuestions(newQ)
+  }
+  
+  const removeQuestion = (index: number) => {
+    setQualificationQuestions(qualificationQuestions.filter((_, i) => i !== index))
+  }
+  
+  const toggleHandoffTrigger = (trigger: string) => {
+    if (humanHandoffTriggers.includes(trigger)) {
+      setHumanHandoffTriggers(humanHandoffTriggers.filter(t => t !== trigger))
+    } else {
+      setHumanHandoffTriggers([...humanHandoffTriggers, trigger])
+    }
+  }
+
+  const tones = ["Friendly", "Professional", "Luxury", "Playful", "Technical", "Minimal"]
+
   return (
-    <div className="flex-1 space-y-6">
+    <div className="flex-1 space-y-6 pb-20">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -167,10 +240,10 @@ export default function AIAgentPage() {
           </div>
         </div>
       ) : (
-        <div className="max-w-3xl space-y-8">
+        <div className="max-w-3xl space-y-6">
           
-          {/* Toggle */}
-          <div className="flex items-center justify-between p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          {/* 1. AI Assistant Toggle */}
+          <div className="flex items-center justify-between p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-500/30 transition-colors">
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Enable AI Assistant</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -191,12 +264,66 @@ export default function AIAgentPage() {
             </div>
           </div>
 
-          {/* Persona */}
-          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+          {/* 7. AI Triggers */}
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI Persona Prompt</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI Triggers</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Define the personality and goal of your AI. Tell it how to talk, what tone to use, and what it should try to achieve.
+                When should the AI Assistant jump into the conversation?
+              </p>
+            </div>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Start AI When
+              </label>
+              <Select value={aiTrigger} onValueChange={setAiTrigger}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select trigger" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Every Incoming Message">Every Incoming Message</SelectItem>
+                  <SelectItem value="After Comment Automation">After Comment Automation</SelectItem>
+                  <SelectItem value="After First DM">After First DM</SelectItem>
+                  <SelectItem value="Only When No Automation Matches">Only When No Automation Matches</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* 2. AI Goal */}
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI Goal</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                What is the primary objective of this AI Assistant?
+              </p>
+            </div>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Primary Goal
+              </label>
+              <Select value={aiGoal} onValueChange={setAiGoal}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sales Assistant">Sales Assistant</SelectItem>
+                  <SelectItem value="Support Agent">Support Agent</SelectItem>
+                  <SelectItem value="Lead Qualification">Lead Qualification</SelectItem>
+                  <SelectItem value="Appointment Booking">Appointment Booking</SelectItem>
+                  <SelectItem value="Product Recommendation">Product Recommendation</SelectItem>
+                  <SelectItem value="Custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* 3. AI Persona */}
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI Persona</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Define the personality and instructions for your AI. Tell it how to talk and what tone to use.
               </p>
             </div>
             
@@ -215,36 +342,12 @@ export default function AIAgentPage() {
                   {
                     label: "Playful Creator",
                     prompt: "You are a fun, energetic creator. Use casual language, lots of emojis, and hype up the user! Answer their questions using the context, and always end with a fun question to keep the conversation going."
-                  },
-                  {
-                    label: "Lead Qualifier",
-                    prompt: "You are an AI lead qualifier. Your goal is to ask 2-3 short qualifying questions (budget, timeline, needs) before handing them off to our team. Use the provided context to answer their questions along the way. Keep it natural."
-                  },
-                  {
-                    label: "E-commerce Concierge",
-                    prompt: "You are a helpful e-commerce shopping assistant. Recommend products from the context based on the user's needs, answer questions about shipping and returns, and provide direct links to purchase."
-                  },
-                  {
-                    label: "Coach / Consultant",
-                    prompt: "You are a professional business coach. Offer brief, high-value advice using the provided context, and naturally guide the user to book a discovery call or webinar using our link. Be professional yet encouraging."
-                  },
-                  {
-                    label: "Booking Agent",
-                    prompt: "You are an AI booking coordinator. Use the provided context to answer questions about services and pricing, then focus on getting the user to select a time slot on our calendar."
-                  },
-                  {
-                    label: "Real Estate Agent",
-                    prompt: "You are a friendly real estate assistant. Answer questions about property listings, neighborhoods, and pricing based on the context. Push to schedule a property viewing."
-                  },
-                  {
-                    label: "SaaS Onboarding",
-                    prompt: "You are a technical onboarding specialist. Help new users understand our software by answering their questions using the context. Keep answers brief and link to documentation when necessary."
                   }
                 ].map(preset => (
                   <button
                     key={preset.label}
                     onClick={() => setPersona(preset.prompt)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 transition-colors border border-indigo-100 dark:border-indigo-500/20 font-medium"
+                    className="text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 font-medium"
                   >
                     {preset.label}
                   </button>
@@ -252,15 +355,234 @@ export default function AIAgentPage() {
               </div>
             </div>
 
-            <Textarea 
-              value={persona}
-              onChange={(e) => setPersona(e.target.value)}
-              placeholder="You are a friendly and enthusiastic sales representative..."
-              className="min-h-[180px] resize-y bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 focus-visible:ring-indigo-500 text-sm leading-relaxed"
-            />
+            <div className="flex flex-row items-start gap-3">
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2 shrink-0">Tone:</span>
+              <div className="flex flex-wrap items-center gap-2">
+                {tones.map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setTone(t)}
+                    className={cn(
+                      "text-xs px-3 py-1.5 rounded-full font-medium transition-colors border",
+                      tone === t 
+                        ? "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/30"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:border-slate-800"
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Persona Prompt
+              </label>
+              <Textarea 
+                value={persona}
+                onChange={(e) => setPersona(e.target.value)}
+                placeholder="You are a friendly and enthusiastic sales representative..."
+                className="min-h-[140px] resize-y bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 focus-visible:ring-indigo-500 text-sm leading-relaxed"
+              />
+            </div>
           </div>
 
-          {/* Fallback Message */}
+          {/* 4. AI Behaviour */}
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI Behaviour</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Control how the AI responds and remembers past interactions.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Reply Delay
+                </label>
+                <Select value={replyDelay} onValueChange={setReplyDelay}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select delay" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Instant">Instant (0s)</SelectItem>
+                    <SelectItem value="2s">2 seconds</SelectItem>
+                    <SelectItem value="5s">5 seconds</SelectItem>
+                    <SelectItem value="10s">10 seconds</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">Makes the bot feel more human.</p>
+              </div>
+              
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Message Length
+                </label>
+                <Select value={messageLength} onValueChange={setMessageLength}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select length" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Short">Short (1-2 sentences)</SelectItem>
+                    <SelectItem value="Medium">Medium (3-4 sentences)</SelectItem>
+                    <SelectItem value="Detailed">Detailed (Paragraphs)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">Guide the verbosity of responses.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col space-y-4 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-slate-900 dark:text-white">Use Emojis</span>
+                  <p className="text-xs text-slate-500">Allow AI to insert emojis naturally.</p>
+                </div>
+                <div 
+                  onClick={() => setUseEmojis(!useEmojis)}
+                  className={cn("w-10 h-5 rounded-full flex items-center px-1 cursor-pointer transition-colors shrink-0", useEmojis ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700")}
+                >
+                  <div className={cn("w-3 h-3 bg-white rounded-full transition-transform", useEmojis ? "translate-x-5" : "translate-x-0")} />
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-slate-900 dark:text-white">Conversation Memory</span>
+                  <p className="text-xs text-slate-500">Remember context from the last 10 messages.</p>
+                </div>
+                <div 
+                  onClick={() => setConversationMemory(!conversationMemory)}
+                  className={cn("w-10 h-5 rounded-full flex items-center px-1 cursor-pointer transition-colors shrink-0", conversationMemory ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700")}
+                >
+                  <div className={cn("w-3 h-3 bg-white rounded-full transition-transform", conversationMemory ? "translate-x-5" : "translate-x-0")} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Lead Qualification */}
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Lead Qualification</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Have the AI ask a series of questions to qualify leads before proceeding.
+                </p>
+              </div>
+              <div 
+                onClick={() => setLeadQualificationEnabled(!leadQualificationEnabled)}
+                className={cn("w-10 h-5 rounded-full flex items-center px-1 cursor-pointer transition-colors shrink-0", leadQualificationEnabled ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700")}
+              >
+                <div className={cn("w-3 h-3 bg-white rounded-full transition-transform", leadQualificationEnabled ? "translate-x-5" : "translate-x-0")} />
+              </div>
+            </div>
+            
+            {leadQualificationEnabled && (
+              <div className="pt-4 space-y-3">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Qualification Questions
+                </label>
+                <div className="space-y-2">
+                  {qualificationQuestions.map((q, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="text-slate-400 cursor-move">
+                        <GripVertical className="w-4 h-4" />
+                      </div>
+                      <input 
+                        type="text" 
+                        value={q}
+                        onChange={(e) => updateQuestion(idx, e.target.value)}
+                        className="flex h-9 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950/50"
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => removeQuestion(idx)} className="h-9 w-9 text-slate-400 hover:text-red-500">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button variant="outline" size="sm" onClick={addQuestion} className="mt-2 text-xs h-8">
+                  <Plus className="w-3 h-3 mr-1" /> Add Question
+                </Button>
+              </div>
+            )}
+          </div>
+          
+          {/* 6. Booking Integration */}
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                Booking
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Connect your calendar to let AI naturally schedule meetings.
+              </p>
+            </div>
+            
+            {bookingProvider && (
+              <div className="space-y-3 pt-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Cal.com Link
+                </label>
+                <div className="flex gap-2 relative">
+                  <Calendar className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <input 
+                    type="text" 
+                    value={calBookingLink}
+                    onChange={(e) => setCalBookingLink(e.target.value)}
+                    placeholder="e.g. cal.com/username/15min"
+                    className="flex h-10 w-full rounded-md border border-slate-200 bg-slate-50 pl-10 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950/50"
+                  />
+                </div>
+                <p className="text-xs text-slate-500">
+                  If provided, the AI will naturally share this link when users express interest in booking a call.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* 8. Human Handoff */}
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Human Handoff</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Automatically stop the AI and notify a human under specific conditions.
+                </p>
+              </div>
+              <div 
+                onClick={() => setHumanHandoffEnabled(!humanHandoffEnabled)}
+                className={cn("w-10 h-5 rounded-full flex items-center px-1 cursor-pointer transition-colors shrink-0", humanHandoffEnabled ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700")}
+              >
+                <div className={cn("w-3 h-3 bg-white rounded-full transition-transform", humanHandoffEnabled ? "translate-x-5" : "translate-x-0")} />
+              </div>
+            </div>
+            
+            {humanHandoffEnabled && (
+              <div className="pt-4 space-y-3">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Handoff Triggers
+                </label>
+                <div className="space-y-3 mt-2">
+                  {["User requests pricing", "User wants a demo", "User asks for a human", "AI confidence is low"].map(trigger => (
+                    <label key={trigger} className="flex items-center space-x-3 cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        checked={humanHandoffTriggers.includes(trigger)}
+                        onChange={() => toggleHandoffTrigger(trigger)}
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{trigger}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 9. Fallback Message */}
           <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Fallback Message</h3>
@@ -272,38 +594,8 @@ export default function AIAgentPage() {
               value={fallbackMessage}
               onChange={(e) => setFallbackMessage(e.target.value)}
               placeholder="I'm not entirely sure about that! Let me connect you with a human team member."
-              className="min-h-[100px] resize-y bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 focus-visible:ring-indigo-500"
+              className="min-h-[80px] resize-y bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 focus-visible:ring-indigo-500"
             />
-          </div>
-          
-          {/* Integrations */}
-          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                Integrations
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Connect external tools to give your AI Agent more capabilities.
-              </p>
-            </div>
-            
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Cal.com Booking Link
-              </label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={calBookingLink}
-                  onChange={(e) => setCalBookingLink(e.target.value)}
-                  placeholder="e.g. cal.com/username/15min"
-                  className="flex h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950/50 dark:ring-offset-slate-950 dark:placeholder:text-slate-400"
-                />
-              </div>
-              <p className="text-xs text-slate-500">
-                If provided, the AI will naturally share this link when users express interest in booking a call.
-              </p>
-            </div>
           </div>
           
         </div>

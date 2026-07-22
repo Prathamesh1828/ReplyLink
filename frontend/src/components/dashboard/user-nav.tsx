@@ -52,24 +52,20 @@ export function UserNav() {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src="/avatars/01.png" alt={user?.fullName || "User"} />
-              <AvatarFallback>{user?.initials || "U"}</AvatarFallback>
+          <Button variant="ghost" className="w-full justify-start gap-3 px-2 py-6 hover:bg-sidebar-accent">
+            <Avatar className="h-9 w-9 rounded-md bg-[#009698] text-white">
+              <AvatarFallback className="bg-transparent rounded-md text-base text-white">{user?.initials?.[0] || "U"}</AvatarFallback>
             </Avatar>
+            <span className="text-[15px] font-medium truncate">{user?.fullName || "User"}</span>
           </Button>
         }
       />
       <DropdownMenuContent className="w-56" align="end">
-        <div className="flex items-center justify-start gap-2 p-2">
-          <Avatar className="h-9 w-9 rounded-md bg-[#009698] text-white">
-            <AvatarFallback className="bg-transparent rounded-md text-base">{user?.initials?.[0] || "U"}</AvatarFallback>
-          </Avatar>
-          <p className="text-[15px] font-medium leading-none">{user?.fullName || "User"}</p>
-        </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer py-2">
-          <LogOut className="mr-2 h-[18px] w-[18px] text-muted-foreground" />
+        <DropdownMenuItem 
+          onClick={handleSignOut} 
+          className="cursor-pointer py-2 text-red-600 focus:text-red-600 focus:bg-red-50 dark:text-red-500 dark:focus:bg-red-950/50"
+        >
+          <LogOut className="mr-2 h-[18px] w-[18px]" />
           <span className="text-[15px]">Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -16,6 +16,8 @@ import {
   Sparkles,
 } from "lucide-react"
 import { Instagram } from "@/components/icons"
+import { UserNav } from "./user-nav"
+import { SupportModal } from "./support-modal"
 
 import { cn } from "@/lib/utils"
 
@@ -24,67 +26,30 @@ const navItems = [
   { title: "Automations", href: "/automations", icon: Wand2 },
   { title: "Templates", href: "/templates", icon: MessageSquare },
   { title: "Knowledge Base", href: "/knowledge", icon: BookOpen },
+  { title: "AI Agent", href: "/ai-agent", icon: Sparkles },
   { title: "Contacts", href: "/contacts", icon: Users },
   { title: "Instagram", href: "/instagram", icon: Instagram },
-  { title: "AI Agent", href: "/ai-agent", icon: Sparkles },
+  { title: "Settings", href: "/settings", icon: Settings },
 ]
 
 const bottomNavItems = [
   { title: "Billing", href: "/billing", icon: CreditCard },
-  { title: "Profile", href: "/profile", icon: User },
-  { title: "Settings", href: "/settings", icon: Settings },
-  { title: "Support", href: "/support", icon: LifeBuoy },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
-  const [width, setWidth] = useState(240)
-  const isResizing = useRef(false)
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing.current) return
-      let newWidth = e.clientX
-      if (newWidth < 200) newWidth = 200
-      if (newWidth > 400) newWidth = 400
-      setWidth(newWidth)
-    }
-
-    const handleMouseUp = () => {
-      isResizing.current = false
-      document.body.style.cursor = "default"
-    }
-
-    document.addEventListener("mousemove", handleMouseMove)
-    document.addEventListener("mouseup", handleMouseUp)
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-    }
-  }, [])
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault()
-    isResizing.current = true
-    document.body.style.cursor = "col-resize"
-  }
+  const [supportOpen, setSupportOpen] = useState(false)
 
   return (
     <div
-      style={{ width: `${width}px` }}
-      className="relative flex flex-col border-r bg-sidebar text-sidebar-foreground h-full flex-shrink-0 transition-none"
+      className="w-[220px] relative flex flex-col border-r bg-sidebar text-sidebar-foreground h-full flex-shrink-0 transition-none"
     >
-      <div 
-        className="absolute right-0 top-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50 active:bg-primary z-50"
-        onMouseDown={handleMouseDown}
-      />
-      
-      <div className="flex h-14 items-center border-b px-4 py-4 justify-between">
-        <div className="flex items-center gap-2 font-semibold truncate">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="truncate">ReplyLink</span>
+      <div className="flex h-14 items-center border-b px-6 py-4 justify-between">
+        <div className="flex items-center font-bold text-[22px] tracking-tight truncate">
+          <span className="truncate">
+            <span className="text-foreground dark:text-white">Reply</span>
+            <span className="bg-gradient-to-r from-[#a855f7] to-[#3b82f6] bg-clip-text text-transparent">Link</span>
+          </span>
         </div>
       </div>
 
@@ -127,8 +92,21 @@ export function Sidebar() {
               </Link>
             )
           })}
+          <button
+            onClick={() => setSupportOpen(true)}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <LifeBuoy className="h-4 w-4 shrink-0" />
+            <span className="truncate">Support</span>
+          </button>
         </nav>
+        
+        <div className="pt-2 flex items-center justify-start ml-2 border-t">
+          <UserNav />
+        </div>
       </div>
+      
+      <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
     </div>
   )
 }

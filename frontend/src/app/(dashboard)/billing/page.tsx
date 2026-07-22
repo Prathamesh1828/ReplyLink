@@ -1,106 +1,133 @@
-import { Metadata } from "next"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Sparkles, Zap, Crown } from "lucide-react"
+"use client"
 
-export const metadata: Metadata = {
-  title: "Billing | ReplyLink",
-  description: "Manage your subscription and billing.",
-}
-
-const plans = [
-  {
-    name: "Starter",
-    price: "$29",
-    description: "For individuals getting started.",
-    features: ["500 messages/mo", "1 automation", "1 Instagram account", "Email support"],
-    current: false,
-    icon: Zap,
-  },
-  {
-    name: "Pro",
-    price: "$79",
-    description: "For growing businesses.",
-    features: ["5,000 messages/mo", "10 automations", "3 Instagram accounts", "Priority support", "Analytics dashboard"],
-    current: true,
-    icon: Sparkles,
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    description: "For large-scale operations.",
-    features: ["Unlimited messages", "Unlimited automations", "Unlimited accounts", "Dedicated support", "Custom integrations", "SLA guarantee"],
-    current: false,
-    icon: Crown,
-  },
-]
+import { useEffect, useState } from "react"
+import { Card, CardHeader } from "@/components/ui/card"
+import { Users, MessageSquare, Wand2, AlertTriangle } from "lucide-react"
 
 export default function BillingPage() {
+  const maxContacts = 10;
+  const maxMessages = 100;
+  const maxAutomations = 5;
+  
+  // Dummy usage data for demonstration
+  const [contactsUsed, setContactsUsed] = useState(2);
+  const [messagesUsed, setMessagesUsed] = useState(11);
+  const [automationsUsed, setAutomationsUsed] = useState(0);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/automations/");
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setAutomationsUsed(data.length);
+        }
+      } catch (err) {
+        console.error("Failed to fetch automations count", err);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const contactsPercent = contactsUsed > 0 ? Math.max((contactsUsed / maxContacts) * 100, 2) : 0;
+  const messagesPercent = messagesUsed > 0 ? Math.max((messagesUsed / maxMessages) * 100, 2) : 0;
+  const automationsPercent = automationsUsed > 0 ? Math.max((automationsUsed / maxAutomations) * 100, 2) : 0;
+
+  const isContactsLimitReached = contactsUsed >= maxContacts;
+  const isMessagesLimitReached = messagesUsed >= maxMessages;
+  const isAutomationsLimitReached = automationsUsed >= maxAutomations;
+  const isAnyLimitReached = isContactsLimitReached || isMessagesLimitReached || isAutomationsLimitReached;
+
   return (
     <div className="flex-1 space-y-6">
       <div className="pb-4">
-        <h2 className="text-3xl font-bold tracking-tight">Billing</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Billing overview</h2>
         <p className="text-muted-foreground">
-          Manage your subscription and payment method.
+          Manage your subscription
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Plan</CardTitle>
-          <CardDescription>You are on the <span className="font-semibold text-foreground">Pro</span> plan.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Next billing date</span>
-            <span className="text-sm font-medium">Feb 1, 2024</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Messages used</span>
-            <span className="text-sm font-medium">2,340 / 5,000</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-2 mt-2">
-            <div className="bg-primary h-2 rounded-full" style={{ width: "46.8%" }} />
-          </div>
-        </CardContent>
-      </Card>
+      <Card className="w-full max-w-5xl">
+        <CardHeader className="pb-6">
+          {isAnyLimitReached && (
+            <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-200">
+              <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold text-sm">Free tier limit reached</p>
+                <p className="text-sm">You have reached the maximum limits for your current plan. Please upgrade to continue using these features without interruption.</p>
+              </div>
+            </div>
+          )}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {plans.map((plan) => (
-          <Card key={plan.name} className={plan.current ? "ring-2 ring-primary border-primary" : ""}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                    <plan.icon className="h-4 w-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{plan.name}</CardTitle>
-                </div>
-                {plan.current && <Badge>Current</Badge>}
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            CURRENT PLAN
+          </div>
+          <div className="flex items-center gap-3">
+            <h3 className="text-2xl font-bold">Premium Plus • Free</h3>
+            <span className="bg-blue-100 text-[#4F46E5] text-xs font-semibold px-2.5 py-1 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
+              For Limited time
+            </span>
+          </div>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Includes all features and sufficient usage credits.
+          </p>
+        </CardHeader>
+        
+        <div className="px-6 py-6 border-t">
+          <div className="grid gap-8 md:grid-cols-3">
+            {/* Contacts */}
+            <div className="space-y-3">
+              <div className="font-medium text-sm">Total Contacts</div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-[#4F46E5] h-2 rounded-full" 
+                  style={{ width: `${contactsPercent}%` }} 
+                />
               </div>
-              <CardDescription>{plan.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-3xl font-bold">
-                {plan.price}
-                {plan.price !== "Custom" && <span className="text-sm font-normal text-muted-foreground">/mo</span>}
+              <div className="flex items-center text-sm text-muted-foreground gap-2">
+                <Users className="h-[14px] w-[14px]" />
+                <span className={isContactsLimitReached ? "text-red-600 font-medium dark:text-red-400" : ""}>
+                  {contactsUsed} / {maxContacts.toLocaleString()}
+                </span>
               </div>
-              <ul className="space-y-2">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Button variant={plan.current ? "outline" : "default"} className="w-full" disabled={plan.current}>
-                {plan.current ? "Current Plan" : plan.price === "Custom" ? "Contact Sales" : "Upgrade"}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </div>
+
+            {/* Messages */}
+            <div className="space-y-3">
+              <div className="font-medium text-sm">Total Messages</div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-[#4F46E5] h-2 rounded-full" 
+                  style={{ width: `${messagesPercent}%` }} 
+                />
+              </div>
+              <div className="flex items-center text-sm text-muted-foreground gap-2">
+                <MessageSquare className="h-[14px] w-[14px]" />
+                <span className={isMessagesLimitReached ? "text-red-600 font-medium dark:text-red-400" : ""}>
+                  {messagesUsed} / {maxMessages.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Automation Runs */}
+            <div className="space-y-3">
+              <div className="font-medium text-sm">Total Automation Runs</div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-[#4F46E5] h-2 rounded-full" 
+                  style={{ width: `${automationsPercent}%` }} 
+                />
+              </div>
+              <div className="flex items-center text-sm text-muted-foreground gap-2">
+                <Wand2 className="h-[14px] w-[14px]" />
+                <span className={isAutomationsLimitReached ? "text-red-600 font-medium dark:text-red-400" : ""}>
+                  {automationsUsed} / {maxAutomations.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
     </div>
   )
 }

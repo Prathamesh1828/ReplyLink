@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Sparkles, Lock, BarChart3, Users } from "lucide-react"
+import { Sparkles, Lock, MessageCircle, Database, Zap } from "lucide-react"
 import { Instagram } from "@/components/icons"
 
 export default function AuthLayout({
@@ -44,11 +44,11 @@ export default function AuthLayout({
 
         {/* Content */}
         <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-16">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 shadow-lg shadow-violet-500/20">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">ReplyLink</span>
+          <div className="flex items-center mb-16">
+            <span className="text-[32px] font-bold tracking-tight">
+              <span className="text-white">Reply</span>
+              <span className="bg-gradient-to-r from-[#a855f7] to-[#3b82f6] bg-clip-text text-transparent">Link</span>
+            </span>
           </div>
 
           <motion.div
@@ -61,27 +61,27 @@ export default function AuthLayout({
               Automate your Instagram conversations with AI.
             </h1>
             <p className="text-slate-400 text-[16px] mb-10 leading-relaxed">
-              Turn DMs and comments into sales effortlessly. Built for modern businesses looking to scale.
+              Turn DMs and comments into meaningful interactions effortlessly. Built for creators and businesses looking to scale.
             </p>
 
             <div className="space-y-6">
               <div className="flex items-center gap-4 text-slate-300">
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
-                  <Instagram className="h-5 w-5 text-violet-400" />
+                  <MessageCircle className="h-5 w-5 text-violet-400" />
                 </div>
-                <span className="text-[15px]">Intelligent auto-replies to stories and comments</span>
+                <span className="text-[15px]">Automate DMs, comments, and story replies</span>
               </div>
               <div className="flex items-center gap-4 text-slate-300">
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
-                  <Users className="h-5 w-5 text-violet-400" />
+                  <Database className="h-5 w-5 text-violet-400" />
                 </div>
-                <span className="text-[15px]">Capture leads directly into the built-in CRM</span>
+                <span className="text-[15px]">Train AI agents with your custom knowledge base</span>
               </div>
               <div className="flex items-center gap-4 text-slate-300">
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
-                  <BarChart3 className="h-5 w-5 text-violet-400" />
+                  <Zap className="h-5 w-5 text-violet-400" />
                 </div>
-                <span className="text-[15px]">Advanced analytics to track conversion rates</span>
+                <span className="text-[15px]">Boost engagement and respond instantly 24/7</span>
               </div>
             </div>
           </motion.div>
@@ -100,12 +100,10 @@ export default function AuthLayout({
 
         {/* Mobile Logo */}
         <div className="lg:hidden flex justify-center mb-8 relative z-10">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white shadow-lg shadow-violet-500/20">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-white">ReplyLink</span>
-          </div>
+          <span className="text-4xl font-bold tracking-tight">
+            <span className="text-white">Reply</span>
+            <span className="bg-gradient-to-r from-[#a855f7] to-[#3b82f6] bg-clip-text text-transparent">Link</span>
+          </span>
         </div>
 
         {/* Auth Card Container */}

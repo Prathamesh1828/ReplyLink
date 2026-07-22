@@ -59,6 +59,10 @@ class WebhookHandler:
                     elif "message" in event:
                         print("\nMESSAGE EVENT RECEIVED")
                         message = event["message"]
+                        
+                        is_echo = message.get("is_echo", False)
+                        recipient_id = event.get("recipient", {}).get("id")
+
                         if "reply_to" in message and "story" in message["reply_to"]:
                             text = message.get("text", "")
                             message_id = message.get("mid", f"story_{sender_id}")
@@ -72,12 +76,14 @@ class WebhookHandler:
                         else:
                             text = message.get("text", "")
                             message_id = message.get("mid", f"dm_{sender_id}")
-                            print(f"STANDARD DM DETECTED: {text}")
+                            print(f"STANDARD DM DETECTED: {text} (Echo: {is_echo})")
                             automation_service.handle_dm(
                                 text=text,
                                 sender_id=sender_id,
                                 instagram_business_id=instagram_business_id,
-                                message_id=message_id
+                                message_id=message_id,
+                                is_echo=is_echo,
+                                recipient_id=recipient_id
                             )
         except Exception as e:
             print("\nERROR PROCESSING WEBHOOK in Handler")

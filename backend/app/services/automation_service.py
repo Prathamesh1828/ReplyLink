@@ -227,221 +227,8 @@ class AutomationService:
                     break
 
     @staticmethod
-    def handle_dm(text: str, sender_id: str, instagram_business_id: str, message_id: str):
-        print(f"Handling DM from (ID: {sender_id}): {text}")
-        
-        account = account_service.get_account_by_instagram_id(instagram_business_id)
-        if not account:
-            return
-            
-        user_id = account.get("user_id")
-        page_access_token = account.get("page_access_token")
-        
-        active_automations = AutomationRepository.get_active_automations_by_user(user_id)
-        if not active_automations:
-            return
-
-        dm_automations = [a for a in active_automations if a.get("automation_type") in ["dm_reply", "auto_reply_dm"]]
-        if not dm_automations:
-            return
-
-        text_lower = text.lower()
-        
-        for auto in dm_automations:
-            config = auto.get("config", {})
-            keyword_type = config.get("keywordType", "specific")
-            keywords = [k.lower() for k in config.get("keywords", [])]
-            
-            matched_keyword = "ANY"
-            is_match = False
-            if keyword_type == "any":
-                is_match = True
-            else:
-                for k in keywords:
-                    if k in text_lower:
-                        is_match = True
-                        matched_keyword = k
-                        break
-                        
-            if is_match:
-                print(f"DM Match found for automation: {auto.get('name')}")
-                
-                try:
-                    from app.services.meta_service import MetaService
-                    fetched_username = MetaService.get_user_profile(sender_id, page_access_token)
-                    
-                    run_data = {
-                        "automation_id": auto["id"],
-                        "comment_id": message_id,
-                        "username": fetched_username or "DM Sender", 
-                        "status": "pending",
-                        "instagram_account": instagram_business_id,
-                        "keyword": matched_keyword,
-                        "comment": text,
-                        "dm_sent": False,
-                        "public_reply_sent": False
-                    }
-                    run_res = supabase.table("automation_runs").insert(run_data).execute()
-                    run_id = run_res.data[0]["id"]
-                    
-                    dm_success = automation_service.trigger_next_sequence_step(
-                        run_id=run_id,
-                        config=config,
-                        recipient_id=sender_id,
-                        page_access_token=page_access_token,
-                        instagram_business_id=instagram_business_id,
-                        step="START"
-                    )
-                    
-                    status = "success" if dm_success else "error"
-                    error_msg = None if dm_success else "Failed to start DM sequence"
-                        
-                    new_count = auto.get("runs_count", 0) + 1
-                    supabase.table("automations").update({
-                        "runs_count": new_count,
-                        "last_run_at": datetime.utcnow().isoformat()
-                    }).eq("id", auto["id"]).execute()
-                    
-                    supabase.table("automation_runs").update({
-                        "status": status,
-                        "error": error_msg,
-                        "dm_sent": dm_success
-                    }).eq("id", run_id).execute()
-                    
-                    break
-                    
-                except Exception as e:
-                    print(f"Failed during DM automation run execution: {e}")
-                    break
-
-    def trigger_next_sequence_step(self, run_id: str, config: dict, recipient_id: str, page_access_token: str, instagram_business_id: str, step: str, comment_id: str = None) -> bool:
-        """State machine for DM sequence."""
-        try:
-            if step == "START":
-                if config.get("openingMessageEnabled") and config.get("openingMessage"):
-                    # Send Opening Message with Postback
-                    next_step = "FOLLOW" if config.get("askToFollowEnabled") else "FINAL"
-                    buttons = [{
-                        "type": "postback",
-                        "title": config.get("buttonLabel", "Click Here"),
-                        "payload": f"AUTO_RUN_{run_id}_STEP_{next_step}"
-                    }]
-                    return meta_service.send_dm(
-                        recipient_id=recipient_id,
-                        message=config.get("openingMessage"),
-                        page_access_token=page_access_token,
-                        buttons=buttons,
-                        comment_id=comment_id
-                    )
-                else:
-                    # Skip opening message, go directly to next logical step
-                    return self.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, "FOLLOW" if config.get("askToFollowEnabled") else "FINAL", comment_id)
-                    
-            elif step == "FOLLOW":
-                if config.get("askToFollowEnabled") and config.get("askToFollowMessage"):
-                    # Send Follow Gate Message
-                    # Fetch the business username to build a direct profile link
-                    business_username = meta_service.get_business_username(instagram_business_id, page_access_token)
-                    profile_url = f"https://instagram.com/{business_username}" if business_username else "https://instagram.com/"
-                    
-                    buttons = [
-                        {
-                            "type": "web_url",
-                            "url": profile_url,
-                            "title": config.get("profileButtonLabel", "Visit Profile")
-                        },
-                        {
-                            "type": "postback",
-                            "title": config.get("imFollowingButtonLabel", "I'm following ✅"),
-                            "payload": f"AUTO_RUN_{run_id}_STEP_VERIFY_FOLLOW"
-                        }
-                    ]
-                    return meta_service.send_dm(
-                        recipient_id=recipient_id,
-                        message=config.get("askToFollowMessage"),
-                        page_access_token=page_access_token,
-                        buttons=buttons
-                    )
-                else:
-                    return self.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, "FINAL")
-            
-            elif step == "VERIFY_FOLLOW":
-                print(f"Verifying follow status for {recipient_id}")
-                is_following = meta_service.check_user_follows_business(recipient_id, page_access_token)
-                if is_following:
-                    print("User is following! Proceeding to FINAL.")
-                    return self.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, "FINAL")
-                else:
-                    print("User is NOT following. Looping back to FOLLOW.")
-                    return self.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, "FOLLOW", comment_id)
-                    
-            elif step == "FINAL":
-                if config.get("finalMessage"):
-                    import os
-                    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
-                    tracking_link = f"{backend_url}/api/l/{run_id}"
-                    
-                    buttons = [{
-                        "type": "web_url",
-                        "url": tracking_link,
-                        "title": config.get("finalLinkLabel", "App ❤️")
-                    }]
-                    return meta_service.send_dm(
-                        recipient_id=recipient_id,
-                        message=config.get("finalMessage"),
-                        page_access_token=page_access_token,
-                        buttons=buttons,
-                        image_url=config.get("uploadedImage"),
-                        comment_id=comment_id
-                    )
-                return True
-                
-        except Exception as e:
-            print(f"Error triggering sequence step {step}: {e}")
-            return False
-
-    def handle_postback(self, payload: str, sender_id: str, instagram_business_id: str):
-        print(f"Handling postback: {payload} from {sender_id}")
-        if not payload.startswith("AUTO_RUN_"):
-            return
-            
-        parts = payload.split("_STEP_")
-        if len(parts) != 2:
-            return
-            
-        run_id = parts[0].replace("AUTO_RUN_", "")
-        step = parts[1]
-        
-        # 1. Fetch the run
-        run_res = supabase.table("automation_runs").select("*").eq("id", run_id).execute()
-        if not run_res.data:
-            print(f"Run {run_id} not found.")
-            return
-            
-        run = run_res.data[0]
-        automation_id = run["automation_id"]
-        
-        # 2. Fetch the automation config
-        auto_res = supabase.table("automations").select("*").eq("id", automation_id).execute()
-        if not auto_res.data:
-            print(f"Automation {automation_id} not found.")
-            return
-            
-        config = auto_res.data[0].get("config", {})
-        
-        # 3. Fetch account
-        account = account_service.get_account_by_instagram_id(instagram_business_id)
-        if not account:
-            return
-            
-        page_access_token = account.get("page_access_token")
-        
-        # 4. Trigger next step
-        self.trigger_next_sequence_step(run_id, config, sender_id, page_access_token, instagram_business_id, step)
-
-    @staticmethod
-    def handle_dm(text: str, sender_id: str, instagram_business_id: str, message_id: str):
-        print(f"Handling standard DM from {sender_id}: {text}")
+    def handle_dm(text: str, sender_id: str, instagram_business_id: str, message_id: str, is_echo: bool = False, recipient_id: str = None):
+        print(f"Handling DM from (ID: {sender_id}): {text} (is_echo: {is_echo})")
         
         # 1. Fetch the linked account to get user_id and access_token
         account = account_service.get_account_by_instagram_id(instagram_business_id)
@@ -451,20 +238,161 @@ class AutomationService:
         user_id = account.get("user_id")
         page_access_token = account.get("page_access_token")
         
-        # 2. Check if AI Agent is active
+        # 1.5 Check if chat is paused for Human Handoff
+        if not is_echo:
+            try:
+                paused_res = supabase.table("paused_chats").select("id").eq("instagram_account_id", instagram_business_id).eq("sender_id", sender_id).execute()
+                if paused_res.data:
+                    print(f"Chat with {sender_id} is PAUSED for human handoff. Ignoring message.")
+                    return
+            except Exception as e:
+                print(f"Error checking paused_chats: {e}")
+        
+        # 2. Process Standard Keyword Automations first
+        active_automations = AutomationRepository.get_active_automations_by_user(user_id)
+        dm_automations = [a for a in active_automations if a.get("automation_type") in ["dm_reply", "auto_reply_dm"]] if active_automations else []
+        
+        matched_standard_auto = False
+        text_lower = text.lower()
+        
+        if not is_echo and dm_automations:
+            for auto in dm_automations:
+                config = auto.get("config", {})
+                keyword_type = config.get("keywordType", "specific")
+                keywords = [k.lower() for k in config.get("keywords", [])]
+                
+                matched_keyword = "ANY"
+                is_match = False
+                if keyword_type == "any":
+                    is_match = True
+                else:
+                    for k in keywords:
+                        if k in text_lower:
+                            is_match = True
+                            matched_keyword = k
+                            break
+                            
+                if is_match:
+                    matched_standard_auto = True
+                    print(f"DM Match found for standard automation: {auto.get('name')}")
+                    
+                    try:
+                        from app.services.meta_service import MetaService
+                        fetched_username = MetaService.get_user_profile(sender_id, page_access_token)
+                        
+                        run_data = {
+                            "automation_id": auto["id"],
+                            "comment_id": message_id,
+                            "username": fetched_username or "DM Sender", 
+                            "status": "pending",
+                            "instagram_account": instagram_business_id,
+                            "keyword": matched_keyword,
+                            "comment": text,
+                            "dm_sent": False,
+                            "public_reply_sent": False
+                        }
+                        run_res = supabase.table("automation_runs").insert(run_data).execute()
+                        run_id = run_res.data[0]["id"]
+                        
+                        dm_success = automation_service.trigger_next_sequence_step(
+                            run_id=run_id,
+                            config=config,
+                            recipient_id=sender_id,
+                            page_access_token=page_access_token,
+                            instagram_business_id=instagram_business_id,
+                            step="START"
+                        )
+                        
+                        status = "success" if dm_success else "error"
+                        error_msg = None if dm_success else "Failed to start DM sequence"
+                            
+                        new_count = auto.get("runs_count", 0) + 1
+                        supabase.table("automations").update({
+                            "runs_count": new_count,
+                            "last_run_at": datetime.utcnow().isoformat()
+                        }).eq("id", auto["id"]).execute()
+                        
+                        supabase.table("automation_runs").update({
+                            "status": status,
+                            "error": error_msg,
+                            "dm_sent": dm_success
+                        }).eq("id", run_id).execute()
+                        
+                        break # Only run one matching standard automation
+                        
+                    except Exception as e:
+                        print(f"Failed during DM standard automation run execution: {e}")
+                        break
+
+        # 3. Process AI Agent Logic
         try:
             agent_res = supabase.table("ai_agents").select("*").eq("instagram_account_id", instagram_business_id).eq("user_id", user_id).execute()
             
             if not agent_res.data or not agent_res.data[0].get("is_active"):
-                print("AI Agent is not active or not found. Ignoring standard DM.")
+                print("AI Agent is not active or not found. Ignoring AI routing.")
                 return
                 
+            if is_echo:
+                print(f"Logging AI outgoing message to {recipient_id}")
+                from app.services.meta_service import MetaService
+                fetched_username = MetaService.get_user_profile(recipient_id, page_access_token) or "Instagram User"
+                
+                ai_auto_res = supabase.table("automations").select("id").eq("user_id", user_id).eq("automation_type", "ai_agent").execute()
+                if ai_auto_res.data:
+                    ai_automation_id = ai_auto_res.data[0]["id"]
+                    run_data = {
+                        "automation_id": ai_automation_id,
+                        "comment_id": message_id,
+                        "username": fetched_username,
+                        "status": "success",
+                        "instagram_account": instagram_business_id,
+                        "keyword": "AI_AGENT_REPLY",
+                        "comment": text,
+                        "dm_sent": True,
+                        "public_reply_sent": False
+                    }
+                    supabase.table("automation_runs").insert(run_data).execute()
+                return
+
             agent_settings = agent_res.data[0]
+            config = agent_settings.get("config", {})
+            ai_trigger = config.get("aiTrigger", "Every Incoming Message")
+            
+            if ai_trigger == "Only When No Automation Matches" and matched_standard_auto:
+                print("AI Agent skipped because a standard automation matched and trigger is set to 'Only When No Automation Matches'.")
+                return
+
             persona = agent_settings.get("persona", "You are a helpful assistant.")
             fallback = agent_settings.get("fallback_message", "I am having trouble understanding right now.")
             cal_booking_link = agent_settings.get("cal_booking_link", "")
             
-            # 3. Retrieve relevant knowledge
+            # Extract advanced config settings
+            ai_goal = config.get("aiGoal", "Sales Assistant")
+            tone = config.get("tone", "Friendly")
+            reply_delay = config.get("replyDelay", "Instant")
+            message_length = config.get("messageLength", "Short")
+            use_emojis = config.get("useEmojis", True)
+
+            # Enforce Reply Delay
+            if reply_delay != "Instant":
+                delay_map = {"2s": 2, "5s": 5, "10s": 10}
+                delay_sec = delay_map.get(reply_delay, 0)
+                if delay_sec > 0:
+                    import time
+                    print(f"AI Agent applying reply delay of {delay_sec} seconds...")
+                    time.sleep(delay_sec)
+
+            # Construct Advanced Persona
+            emoji_instruction = "Use emojis naturally." if use_emojis else "Do NOT use any emojis. This is a strict requirement."
+            length_instruction = {
+                "Short": "Keep your response very short (1-2 sentences maximum). Be concise.",
+                "Medium": "Keep your response medium length (3-4 sentences).",
+                "Detailed": "Provide a detailed response in paragraphs."
+            }.get(message_length, "Keep your response short.")
+            
+            advanced_persona = f"{persona}\n\nYour primary goal is: {ai_goal}.\nEnsure your tone is strictly: {tone}.\n{length_instruction}\n{emoji_instruction}"
+            
+            # Retrieve relevant knowledge
             from app.services.knowledge_service import search_relevant_knowledge
             from app.services.ai_service import generate_ai_response
             
@@ -479,12 +407,30 @@ class AutomationService:
                 
             cal_instructions = ""
             if cal_booking_link:
-                cal_instructions = f"\nYou have a Cal.com booking link available: {cal_booking_link}. If the user expresses interest in booking a call or meeting, naturally qualify them and share this link."
+                formatted_link = cal_booking_link if cal_booking_link.startswith("http") else f"https://{cal_booking_link}"
+                cal_instructions = f"\nYou have a Cal.com booking link available: {formatted_link}. IMPORTANT: ONLY provide this link if the user EXPLICITLY asks to book a call, schedule a meeting, or asks for next steps. Do NOT provide the link proactively in your first message unless they specifically requested a meeting. When you do share it, you MUST output the raw URL {formatted_link} with spaces around it. Do NOT use markdown like [link](url) and do NOT wrap the URL in quotes or brackets."
 
-            # 4. Generate AI response
+            # Construct Handoff Instructions
+            handoff_instructions = ""
+            handoff_settings = config.get("handoffSettings", {})
+            if handoff_settings and handoff_settings.get("triggers"):
+                triggers = handoff_settings.get("triggers", [])
+                conds = []
+                if "support" in triggers:
+                    conds.append("asks for support, help, or to speak to a human")
+                if "cannot_answer" in triggers:
+                    conds.append("you absolutely cannot answer the user's question using the knowledge base")
+                if "frustration" in triggers:
+                    conds.append("the user expresses frustration, anger, or uses profanity")
+                
+                if conds:
+                    handoff_instructions = f"\nIMPORTANT: If {' or '.join(conds)}, you MUST reply with exactly the secret word: [HANDOFF_TRIGGERED]. Do not say anything else in your reply."
+
+            # Generate AI response
             prompt = f"""
-{persona}
+{advanced_persona}
 {cal_instructions}
+{handoff_instructions}
 
 You have the following knowledge base to answer the user's question:
 ---
@@ -494,11 +440,36 @@ You have the following knowledge base to answer the user's question:
 User's message: "{text}"
 
 If the answer is in the knowledge base, use it to answer. If not, try to be helpful or guide them appropriately based on your persona.
-Keep your response concise and conversational, suitable for an Instagram DM. Do not use markdown.
+Do not use markdown.
 """
             ai_reply = generate_ai_response(prompt)
             
             if ai_reply:
+                if "[HANDOFF_TRIGGERED]" in ai_reply.upper():
+                    print(f"AI triggered Human Handoff for {sender_id}")
+                    # 1. Pause chat
+                    try:
+                        supabase.table("paused_chats").insert({
+                            "instagram_account_id": instagram_business_id,
+                            "sender_id": sender_id,
+                            "user_id": user_id
+                        }).execute()
+                    except Exception as e:
+                        print(f"Failed to insert into paused_chats: {e}")
+                    
+                    # 2. Send Fallback Message
+                    handoff_fallback = handoff_settings.get("fallbackMessage", fallback)
+                    meta_service.send_dm(
+                        recipient_id=sender_id,
+                        message=handoff_fallback,
+                        page_access_token=page_access_token
+                    )
+                    return
+
+                # Strip markdown links just in case the LLM disobeys
+                import re
+                ai_reply = re.sub(r'\[.*?\]\((https?://.*?)\)', r' \1 ', ai_reply)
+                
                 print(f"AI Agent generated reply: {ai_reply}")
                 meta_service.send_dm(
                     recipient_id=sender_id,

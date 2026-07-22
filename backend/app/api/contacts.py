@@ -15,6 +15,10 @@ async def get_contacts(x_user_id: Optional[str] = Header(None)):
     automations_res = supabase.table("automations").select("id, automation_type").eq("user_id", user_id).execute()
     automations = automations_res.data
     
+    # Fetch business username
+    account_res = supabase.table("accounts").select("instagram_username").eq("user_id", user_id).execute()
+    business_username = account_res.data[0]["instagram_username"] if account_res.data else None
+    
     if not automations:
         return []
         
@@ -22,7 +26,6 @@ async def get_contacts(x_user_id: Optional[str] = Header(None)):
     automation_types = {a["id"]: a["automation_type"] for a in automations}
     
     # 2. Fetch runs for these automations
-    # Note: Supabase limits to 1000 rows by default. For a real app, you'd use pagination or an RPC function.
     runs_res = supabase.table("automation_runs").select("*").in_("automation_id", automation_ids).order("created_at", desc=False).execute()
     runs = runs_res.data
     
@@ -40,14 +43,19 @@ async def get_contacts(x_user_id: Optional[str] = Header(None)):
             run_source = "Story Reply"
         elif auto_type in ["auto_reply_dm", "dm_reply"]:
             run_source = "DM"
+        elif auto_type == "ai_agent":
+            run_source = "AI Agent"
         else:
             run_source = "Unknown"
+            
+        display_name = "You" if username == business_username else username
+        display_handle = "" if username == business_username else f"@{username}"
             
         if username not in contacts_map:
             contacts_map[username] = {
                 "id": username,
-                "name": username,
-                "handle": f"@{username}",
+                "name": display_name,
+                "handle": display_handle,
                 "email": None,
                 "source": run_source, # Primary source is their first contact
                 "status": "lead",

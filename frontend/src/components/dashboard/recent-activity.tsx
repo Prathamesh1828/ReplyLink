@@ -76,7 +76,8 @@ export function RecentActivity() {
             </div>
             <div className="ml-4 space-y-1 flex-1">
               <p className="text-sm font-medium leading-none">
-                @{item.username} {
+                {item.keyword === 'AI_AGENT_REPLY' ? 'You messaged @' : '@'}{item.username} {
+                  item.keyword === 'AI_AGENT_REPLY' ? '' :
                   item.automation_type === 'ai_agent' ? 'messaged you' : 
                   item.automation_type === 'auto_reply_story' ? 'replied to your story' : 
                   (item.automation_type === 'auto_reply_dm' || item.automation_type === 'dm_reply') ? 'sent you a DM' : 
