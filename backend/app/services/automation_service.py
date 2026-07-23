@@ -7,6 +7,115 @@ from app.services.supabase_service import supabase
 
 class AutomationService:
     @staticmethod
+    def trigger_next_sequence_step(run_id: str, config: dict, recipient_id: str, page_access_token: str, instagram_business_id: str, step: str = "START", comment_id: str = None) -> bool:
+        try:
+            from app.services.meta_service import meta_service
+            
+            opening_enabled = config.get("openingMessageEnabled", False)
+            ask_to_follow = config.get("askToFollowEnabled", False)
+            
+            if step == "START":
+                if opening_enabled:
+                    message = config.get("openingMessage", "Hello!")
+                    button_label = config.get("buttonLabel", "Send Link")
+                    buttons = [{"type": "postback", "title": button_label, "payload": f"AUTO_RUN_{run_id}_OPENING_CLICKED"}]
+                    print(f"Sending Opening Message to {recipient_id}")
+                    return meta_service.send_dm(recipient_id=recipient_id, message=message, page_access_token=page_access_token, buttons=buttons)
+                else:
+                    step = "OPENING_CLICKED"
+                    
+            if step == "OPENING_CLICKED":
+                if ask_to_follow:
+                    message = config.get("askToFollowMessage", "Please follow us first!")
+                    button_label = config.get("imFollowingButtonLabel", "I'm Following")
+                    
+                    from app.services.meta_service import MetaService
+                    business_username = MetaService.get_business_username(instagram_business_id, page_access_token)
+                    profile_url = f"https://instagram.com/{business_username}" if business_username else "https://instagram.com"
+                    
+                    buttons = [
+                        {"type": "web_url", "title": "Visit Profile", "url": profile_url},
+                        {"type": "postback", "title": button_label, "payload": f"AUTO_RUN_{run_id}_FOLLOW_CLICKED"}
+                    ]
+                    print(f"Sending Ask to Follow Message to {recipient_id}")
+                    return meta_service.send_dm(recipient_id=recipient_id, message=message, page_access_token=page_access_token, buttons=buttons)
+                else:
+                    step = "FOLLOW_CLICKED"
+                    
+            if step == "FOLLOW_CLICKED":
+                if ask_to_follow:
+                    from app.services.meta_service import MetaService
+                    follows = MetaService.check_user_follows_business(recipient_id, page_access_token)
+                    if not follows:
+                        print(f"User {recipient_id} does not follow. Re-sending Ask to Follow.")
+                        return AutomationService.trigger_next_sequence_step(run_id, config, recipient_id, page_access_token, instagram_business_id, step="OPENING_CLICKED", comment_id=comment_id)
+
+                final_message = config.get("finalMessage", "Here is your link!")
+                final_link = config.get("finalLink", "")
+                final_button = config.get("finalLinkLabel", "Get Link")
+                
+                if final_link:
+                    buttons = [{"type": "web_url", "title": final_button, "url": final_link}]
+                    print(f"Sending Final Link Message to {recipient_id}")
+                    return meta_service.send_dm(recipient_id=recipient_id, message=final_message, page_access_token=page_access_token, buttons=buttons)
+                else:
+                    print(f"Sending Final Text Message to {recipient_id}")
+                    return meta_service.send_dm(recipient_id=recipient_id, message=final_message, page_access_token=page_access_token)
+                    
+            return True
+            
+        except Exception as e:
+            print(f"Error in trigger_next_sequence_step: {e}")
+            return False
+
+    @staticmethod
+    def handle_postback(payload: str, sender_id: str, instagram_business_id: str):
+        print(f"Handling postback: {payload} from {sender_id}")
+        try:
+            prefix = "AUTO_RUN_"
+            if not payload.startswith(prefix):
+                return
+                
+            remaining = payload[len(prefix):]
+            run_id = remaining.split("_")[0]
+            step = remaining[len(run_id)+1:]
+            
+            print(f"Postback parsed -> Run: {run_id}, Step: {step}")
+            
+            run_res = supabase.table("automation_runs").select("*").eq("id", run_id).execute()
+            if not run_res.data:
+                print(f"Could not find run_id {run_id}")
+                return
+                
+            run = run_res.data[0]
+            automation_id = run.get("automation_id")
+            
+            auto_res = supabase.table("automations").select("*").eq("id", automation_id).execute()
+            if not auto_res.data:
+                print(f"Could not find automation {automation_id}")
+                return
+                
+            auto = auto_res.data[0]
+            config = auto.get("config", {})
+            
+            account = account_service.get_account_by_instagram_id(instagram_business_id)
+            if not account:
+                return
+            page_access_token = account.get("page_access_token")
+            
+            AutomationService.trigger_next_sequence_step(
+                run_id=run_id,
+                config=config,
+                recipient_id=sender_id,
+                page_access_token=page_access_token,
+                instagram_business_id=instagram_business_id,
+                step=step
+            )
+            
+        except Exception as e:
+            print(f"Error handling postback: {e}")
+
+    @staticmethod
     def handle_comment(comment_text: str, username: str, commenter_id: str, comment_id: str, instagram_business_id: str, media_id: str = "Unknown"):
         print(f"Handling comment from {username} (ID: {commenter_id}): {comment_text} on Media ID: {media_id}")
         
@@ -325,6 +434,10 @@ class AutomationService:
                         break
 
         # 3. Process AI Agent Logic
+        if matched_standard_auto:
+            print("Standard automation matched. Skipping AI Agent to prevent duplicate replies.")
+            return
+
         try:
             agent_res = supabase.table("ai_agents").select("*").eq("instagram_account_id", instagram_business_id).eq("user_id", user_id).execute()
             
@@ -356,11 +469,38 @@ class AutomationService:
 
             agent_settings = agent_res.data[0]
             config = agent_settings.get("config", {})
-            ai_trigger = config.get("aiTrigger", "Every Incoming Message")
+            activation = config.get("activation", "after_keyword_automation")
+            automation_ids = config.get("automation_ids", [])
             
-            if ai_trigger == "Only When No Automation Matches" and matched_standard_auto:
-                print("AI Agent skipped because a standard automation matched and trigger is set to 'Only When No Automation Matches'.")
-                return
+            if not config.get("activation") and config.get("aiTrigger") == "Every Incoming Message":
+                activation = "all_dms"
+                
+            if activation == "after_keyword_automation":
+                from app.services.meta_service import MetaService
+                fetched_username = MetaService.get_user_profile(sender_id, page_access_token)
+                
+                recent_runs_res = supabase.table("automation_runs") \
+                    .select("automation_id, automations(automation_type)") \
+                    .eq("username", fetched_username) \
+                    .eq("instagram_account", instagram_business_id) \
+                    .order("created_at", desc=True) \
+                    .limit(10) \
+                    .execute()
+                    
+                allowed = False
+                if recent_runs_res.data:
+                    for run in recent_runs_res.data:
+                        auto_meta = run.get("automations")
+                        if auto_meta and isinstance(auto_meta, dict) and auto_meta.get("automation_type") == "ai_agent":
+                            continue
+                        
+                        if run.get("automation_id") in automation_ids:
+                            allowed = True
+                        break
+                        
+                if not allowed:
+                    print(f"AI Agent skipped: the most recent automation for user {fetched_username} is not enabled for AI takeover.")
+                    return
 
             persona = agent_settings.get("persona", "You are a helpful assistant.")
             fallback = agent_settings.get("fallback_message", "I am having trouble understanding right now.")

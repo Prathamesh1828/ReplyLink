@@ -1,16 +1,21 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Metadata } from "next"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sparkles, MessageCircle, PlusCircle, MessageSquare, MessagesSquare, Bot, UserPlus, AtSign, ArrowRight } from "lucide-react"
 import { Instagram } from "@/components/icons"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/utils/supabase/client"
+import { ConnectInstagramDialog } from "@/components/dashboard/connect-instagram-dialog"
 
-export const metadata: Metadata = {
-  title: "Templates | ReplyLink",
-  description: "Choose a template to get started with automation",
-}
+// Metadata must be moved to layout.tsx if this is a client component.
+// But since this is a page, we can just remove metadata to keep it simple, or move it to a layout. 
+// For now, removing the metadata export to avoid Next.js errors with "use client".
 
 const templates = [
   {
@@ -67,8 +72,44 @@ const templates = [
 ]
 
 export default function TemplatesPage() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [hasAccount, setHasAccount] = useState<boolean>(true) // default true to prevent flicker
+  const [showConnectDialog, setShowConnectDialog] = useState(false)
+  const [targetHref, setTargetHref] = useState("")
+
+  useEffect(() => {
+    const checkAccount = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        
+        const res = await fetch("http://127.0.0.1:8000/api/accounts/", {
+          headers: { "Authorization": `Bearer ${session.access_token}` }
+        })
+        if (res.ok) {
+          const accounts = await res.json()
+          setHasAccount(accounts && accounts.length > 0)
+        }
+      } catch (err) {
+        console.error("Failed to check accounts", err)
+      }
+    }
+    checkAccount()
+  }, [])
+
+  const handleTemplateClick = (e: React.MouseEvent, href: string) => {
+    e.preventDefault()
+    if (!hasAccount) {
+      setShowConnectDialog(true)
+    } else {
+      router.push(href)
+    }
+  }
+
   return (
     <div className="flex-1 space-y-8">
+      <ConnectInstagramDialog open={showConnectDialog} onOpenChange={setShowConnectDialog} />
       <div className="flex flex-col space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Templates</h2>
         <p className="text-muted-foreground">
@@ -121,12 +162,12 @@ export default function TemplatesPage() {
               </CardContent>
               <CardFooter className="pt-2 pb-6">
                 {isActive ? (
-                  <Link 
-                    href={template.isAi ? `/ai-agent` : `/automations/builder?type=${template.id}`} 
-                    className={cn(buttonVariants({ variant: "default" }), "w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors border-none shadow-sm")}
+                  <Button 
+                    onClick={(e) => handleTemplateClick(e, template.isAi ? `/ai-agent` : `/automations/builder?type=${template.id}`)}
+                    className={cn("w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors border-none shadow-sm")}
                   >
                     Use Template <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
+                  </Button>
                 ) : (
                   <Button variant="outline" className="w-full justify-center h-11 opacity-50 cursor-not-allowed text-muted-foreground font-normal bg-slate-50/50 dark:bg-slate-900/50 dark:border-slate-800" disabled>
                     Coming Soon

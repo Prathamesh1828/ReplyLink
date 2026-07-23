@@ -16,8 +16,7 @@ META_SCOPES = [
     "instagram_manage_messages",
     "instagram_manage_comments",
     "pages_read_engagement",
-    "pages_show_list",
-    "pages_manage_metadata"
+    "pages_show_list"
 ]
 
 @router.post("/meta/intent")

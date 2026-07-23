@@ -3,13 +3,45 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Sparkles, Save, Loader2, GripVertical, Plus, Trash2, Calendar } from "lucide-react"
+import { Sparkles, Save, Loader2, GripVertical, Plus, Trash2, Calendar, MessageSquare, Search, CheckSquare, MessageCircle, PlusCircle, MessagesSquare } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 import { useRouter } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { motion, AnimatePresence } from "framer-motion"
+import { ConnectInstagramDialog } from "@/components/dashboard/connect-instagram-dialog"
+
+const getTemplateIcon = (type: string) => {
+  switch (type) {
+    case 'auto_dm_comments':
+      return { Icon: MessageCircle, bgClass: "bg-[#0ea5e9] text-white" };
+    case 'story_reply':
+    case 'auto_reply_story':
+      return { Icon: PlusCircle, bgClass: "bg-[#10b981] text-white" };
+    case 'dm_reply':
+    case 'auto_reply_dm':
+      return { Icon: MessagesSquare, bgClass: "bg-[#f97316] text-white" };
+    default:
+      return { Icon: MessageCircle, bgClass: "bg-[#0ea5e9] text-white" };
+  }
+};
+
+const getTemplateName = (type: string) => {
+  switch (type) {
+    case 'auto_dm_comments':
+      return "Auto-DM Links from Comments";
+    case 'story_reply':
+    case 'auto_reply_story':
+      return "Auto-Respond to Story Replies";
+    case 'dm_reply':
+    case 'auto_reply_dm':
+      return "Auto-Respond to DMs";
+    default:
+      return "Auto-DM Links from Comments";
+  }
+};
 
 export default function AIAgentPage() {
   const router = useRouter()
@@ -33,13 +65,20 @@ export default function AIAgentPage() {
     "Name", "Email", "Phone Number", "Budget", "Business / Requirement"
   ])
   const [bookingProvider, setBookingProvider] = useState("cal.com")
-  const [aiTrigger, setAiTrigger] = useState("Every Incoming Message")
+  
+  // AI Activation State
+  const [activation, setActivation] = useState("after_keyword_automation")
+  const [automationIds, setAutomationIds] = useState<string[]>([])
+  const [activeAutomations, setActiveAutomations] = useState<any[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  
   const [humanHandoffEnabled, setHumanHandoffEnabled] = useState(false)
   const [humanHandoffTriggers, setHumanHandoffTriggers] = useState<string[]>([])
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [accountId, setAccountId] = useState<string | null>(null)
+  const [showConnectDialog, setShowConnectDialog] = useState(false)
 
   useEffect(() => {
     // Fetch active account first
@@ -61,6 +100,15 @@ export default function AIAgentPage() {
         if (accounts && accounts.length > 0) {
           const activeAccount = accounts.find((a: any) => a.active) || accounts[0]
           setAccountId(activeAccount.instagram_account_id)
+          
+          // Fetch active automations
+          const automationsRes = await fetch("http://127.0.0.1:8000/api/automations/", {
+            headers: { "Authorization": `Bearer ${token}` }
+          })
+          if (automationsRes.ok) {
+            const allAutomations = await automationsRes.json()
+            setActiveAutomations(allAutomations.filter((a: any) => a.active === true && a.automation_type !== "ai_agent"))
+          }
           
           // Fetch settings
           const settingsRes = await fetch(`http://127.0.0.1:8000/api/ai_agents/${activeAccount.instagram_account_id}`, { 
@@ -84,7 +132,14 @@ export default function AIAgentPage() {
               if (cfg.leadQualificationEnabled !== undefined) setLeadQualificationEnabled(cfg.leadQualificationEnabled)
               if (cfg.qualificationQuestions) setQualificationQuestions(cfg.qualificationQuestions)
               if (cfg.bookingProvider) setBookingProvider(cfg.bookingProvider)
-              if (cfg.aiTrigger) setAiTrigger(cfg.aiTrigger)
+              if (cfg.activation) setActivation(cfg.activation)
+              if (cfg.automation_ids) setAutomationIds(cfg.automation_ids)
+              
+              if (cfg.aiTrigger && !cfg.activation) {
+                if (cfg.aiTrigger === "Every Incoming Message") setActivation("all_dms")
+                else setActivation("after_keyword_automation")
+              }
+              
               if (cfg.humanHandoffEnabled !== undefined) setHumanHandoffEnabled(cfg.humanHandoffEnabled)
               if (cfg.humanHandoffTriggers) setHumanHandoffTriggers(cfg.humanHandoffTriggers)
             }
@@ -136,7 +191,8 @@ export default function AIAgentPage() {
             leadQualificationEnabled,
             qualificationQuestions,
             bookingProvider,
-            aiTrigger,
+            activation,
+            automation_ids: automationIds,
             humanHandoffEnabled,
             humanHandoffTriggers
           }
@@ -179,6 +235,27 @@ export default function AIAgentPage() {
   }
 
   const tones = ["Friendly", "Professional", "Luxury", "Playful", "Technical", "Minimal"]
+
+  const filteredAutomations = activeAutomations.filter(a => 
+    a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (a.keyword && a.keyword.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
+
+  const toggleAutomationSelection = (id: string) => {
+    if (automationIds.includes(id)) {
+      setAutomationIds(automationIds.filter(aId => aId !== id))
+    } else {
+      setAutomationIds([...automationIds, id])
+    }
+  }
+
+  const selectAllAutomations = () => {
+    setAutomationIds(activeAutomations.map(a => a.id))
+  }
+
+  const clearAllAutomations = () => {
+    setAutomationIds([])
+  }
 
   return (
     <div className="flex-1 space-y-6 pb-20">
@@ -241,6 +318,7 @@ export default function AIAgentPage() {
         </div>
       ) : (
         <div className="max-w-3xl space-y-6">
+          <ConnectInstagramDialog open={showConnectDialog} onOpenChange={setShowConnectDialog} />
           
           {/* 1. AI Assistant Toggle */}
           <div className="flex items-center justify-between p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-500/30 transition-colors">
@@ -251,7 +329,13 @@ export default function AIAgentPage() {
               </p>
             </div>
             <div 
-              onClick={() => setIsActive(!isActive)}
+              onClick={() => {
+                if (!accountId) {
+                  setShowConnectDialog(true)
+                  return
+                }
+                setIsActive(!isActive)
+              }}
               className={cn(
                 "w-12 h-6 rounded-full flex items-center px-1 cursor-pointer transition-colors shrink-0",
                 isActive ? "bg-indigo-600 dark:bg-indigo-500" : "bg-slate-300 dark:bg-slate-700"
@@ -264,31 +348,142 @@ export default function AIAgentPage() {
             </div>
           </div>
 
-          {/* 7. AI Triggers */}
+          {/* 7. AI Activation */}
           <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI Triggers</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI Activation</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                When should the AI Assistant jump into the conversation?
+                Choose when your AI Assistant should start handling Instagram conversations.
               </p>
             </div>
             <div className="space-y-3">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Start AI When
-              </label>
-              <Select value={aiTrigger} onValueChange={setAiTrigger}>
+              <Select value={activation} onValueChange={setActivation}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select trigger" />
+                  <SelectValue placeholder="Select activation mode">
+                    {activation === "all_dms" ? (
+                      "All DMs"
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        After Keyword Automation
+                        <span className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">
+                          Recommended
+                        </span>
+                      </div>
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Every Incoming Message">Every Incoming Message</SelectItem>
-                  <SelectItem value="After Comment Automation">After Comment Automation</SelectItem>
-                  <SelectItem value="After First DM">After First DM</SelectItem>
-                  <SelectItem value="Only When No Automation Matches">Only When No Automation Matches</SelectItem>
+                  <SelectItem value="all_dms">All DMs</SelectItem>
+                  <SelectItem value="after_keyword_automation">
+                    <div className="flex items-center gap-2">
+                      After Keyword Automation
+                      <span className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">
+                        Recommended
+                      </span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                {activation === "all_dms" 
+                  ? "The AI will automatically respond to every incoming Instagram DM."
+                  : "The selected keyword automation will execute normally. Once it has finished, if the customer continues the conversation, the AI Assistant will automatically take over."}
+              </p>
             </div>
           </div>
+
+          {/* AI Enabled Automations (Conditional) */}
+          <AnimatePresence>
+            {activation === "after_keyword_automation" && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI Enabled Automations</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Select which keyword automations should hand over the conversation to the AI Assistant after they complete.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
+                    <div className="relative w-full sm:w-64">
+                      <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Search automations..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <span className="text-sm font-medium text-slate-500">
+                        {automationIds.length} of {activeAutomations.length} selected
+                      </span>
+                      <Button variant="outline" size="sm" onClick={selectAllAutomations} className="h-9">
+                        <CheckSquare className="w-4 h-4 mr-2" /> All
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={clearAllAutomations} className="h-9">
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
+                    {filteredAutomations.length === 0 ? (
+                      <div className="col-span-full py-8 text-center text-slate-500 text-sm">
+                        No active keyword automations found. Create some in the Automations tab first!
+                      </div>
+                    ) : (
+                      filteredAutomations.map((auto) => {
+                        const isSelected = automationIds.includes(auto.id)
+                        const { Icon: TemplateIcon, bgClass } = getTemplateIcon(auto.automation_type)
+                        const templateName = getTemplateName(auto.automation_type)
+                        
+                        return (
+                          <div 
+                            key={auto.id}
+                            onClick={() => toggleAutomationSelection(auto.id)}
+                            className={cn(
+                              "flex items-center p-3 rounded-lg border cursor-pointer transition-all",
+                              isSelected 
+                                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10" 
+                                : "border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 bg-white dark:bg-slate-900"
+                            )}
+                          >
+                            <input 
+                              type="checkbox" 
+                              checked={isSelected}
+                              onChange={() => {}} 
+                              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mr-3 shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                                {auto.name || "Untitled Automation"}
+                              </p>
+                              <div className="flex items-center mt-1.5 text-xs text-slate-500 dark:text-slate-400 gap-2">
+                                <div className={cn("p-1 rounded flex items-center justify-center shadow-sm", bgClass)}>
+                                  <TemplateIcon className="w-3 h-3" />
+                                </div>
+                                <span className="truncate">
+                                  {templateName} {auto.keyword ? `• Keyword: "${auto.keyword}"` : "• Any Message"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* 2. AI Goal */}
           <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
