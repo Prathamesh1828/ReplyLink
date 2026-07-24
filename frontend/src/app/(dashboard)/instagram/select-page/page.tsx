@@ -24,7 +24,7 @@ export default function SelectPage() {
           return
         }
 
-        const res = await fetch("http://127.0.0.1:8000/api/accounts/", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/accounts/`, {
           headers: {
             "Authorization": `Bearer ${session.access_token}`
           }
@@ -53,7 +53,7 @@ export default function SelectPage() {
         return
       }
 
-      const res = await fetch(`http://127.0.0.1:8000/api/accounts/${id}/activate`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/accounts/${id}/activate`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${session.access_token}`

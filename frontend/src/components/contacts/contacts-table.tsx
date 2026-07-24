@@ -81,7 +81,7 @@ export function ContactsTable() {
   const { data, isLoading } = useRealtimeQuery({
     queryKey: ['contacts'],
     queryFn: async () => {
-      const res = await fetch("http://127.0.0.1:8000/api/contacts", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/contacts`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem("token")}`
         }

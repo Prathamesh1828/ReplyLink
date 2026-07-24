@@ -10,7 +10,7 @@ export function DashboardStats() {
   const { data, isLoading } = useRealtimeQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const res = await fetch("http://127.0.0.1:8000/api/dashboard/stats")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/dashboard/stats`)
       const json = await res.json()
       if (json.detail) throw new Error(json.detail)
       return json

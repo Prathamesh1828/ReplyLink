@@ -22,7 +22,7 @@ export function OverviewCharts() {
   const [chartData, setChartData] = useState<{name: string, total: number}[]>([]);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/dashboard/chart")
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/dashboard/chart`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {

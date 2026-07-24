@@ -69,7 +69,7 @@ export function PhonePreview({ state, media = [], newKeyword = "" }: { state: Bu
         const supabase = createClient()
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) return
-        const res = await fetch("http://127.0.0.1:8000/api/accounts/", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/accounts/`, {
           headers: { "Authorization": `Bearer ${session.access_token}` }
         })
         if (res.ok) {
@@ -78,7 +78,7 @@ export function PhonePreview({ state, media = [], newKeyword = "" }: { state: Bu
             const active = accs.find((a: any) => a.active) || accs[0]
             if (active) {
                try {
-                 const profRes = await fetch(`http://127.0.0.1:8000/api/accounts/${active.id}/profile`, {
+                 const profRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/accounts/${active.id}/profile`, {
                    headers: { "Authorization": `Bearer ${session.access_token}` }
                  })
                  if (profRes.ok) {

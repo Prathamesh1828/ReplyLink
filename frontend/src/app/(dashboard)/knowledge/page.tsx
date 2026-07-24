@@ -34,7 +34,7 @@ export default function KnowledgeBasePage() {
       }
       const token = session.access_token
       
-      const res = await fetch(`http://127.0.0.1:8000/api/knowledge?user_id=${uid}`, { 
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/knowledge?user_id=${uid}`, { 
         headers: { "Authorization": `Bearer ${token}` } 
       })
       if (res.ok) {
@@ -58,7 +58,7 @@ export default function KnowledgeBasePage() {
         }
         const token = session.access_token
         
-        const accountsRes = await fetch("http://127.0.0.1:8000/api/accounts/", { 
+        const accountsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/accounts/`, { 
           headers: { "Authorization": `Bearer ${token}` } 
         })
         const accounts = await accountsRes.json()
@@ -114,13 +114,13 @@ export default function KnowledgeBasePage() {
       
       let res;
       if (editingId) {
-        res = await fetch(`http://127.0.0.1:8000/api/knowledge/${editingId}`, {
+        res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/knowledge/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify(payload)
         })
       } else {
-        res = await fetch(`http://127.0.0.1:8000/api/knowledge?user_id=${userId}`, {
+        res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/knowledge?user_id=${userId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify(payload)
@@ -150,7 +150,7 @@ export default function KnowledgeBasePage() {
       }
       const token = session.access_token
       
-      const res = await fetch(`http://127.0.0.1:8000/api/knowledge/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/knowledge/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       })

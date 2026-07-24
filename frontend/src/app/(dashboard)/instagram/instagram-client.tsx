@@ -54,7 +54,7 @@ export function InstagramClient() {
       const token = await getToken()
       if (!token) return
 
-      const res = await fetch("http://127.0.0.1:8000/api/accounts/", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/accounts/`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -88,7 +88,7 @@ export function InstagramClient() {
       const token = await getToken()
       if (!token) return
 
-      const res = await fetch("http://127.0.0.1:8000/api/auth/meta/intent", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/auth/meta/intent`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -98,7 +98,7 @@ export function InstagramClient() {
       if (!res.ok) throw new Error("Failed to initialize connection")
       const { state } = await res.json()
       
-      window.location.href = `http://127.0.0.1:8000/api/auth/meta/login?state=${state}`
+      window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/auth/meta/login?state=${state}`
     } catch (error) {
       toast.error("Could not start Instagram connection process.")
       console.error(error)
@@ -110,7 +110,7 @@ export function InstagramClient() {
       const token = await getToken()
       if (!token) return
 
-      const res = await fetch(`http://127.0.0.1:8000/api/accounts/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/accounts/${id}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`

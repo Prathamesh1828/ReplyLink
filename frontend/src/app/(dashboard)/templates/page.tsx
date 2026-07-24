@@ -84,7 +84,7 @@ export default function TemplatesPage() {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) return
         
-        const res = await fetch("http://127.0.0.1:8000/api/accounts/", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/accounts/`, {
           headers: { "Authorization": `Bearer ${session.access_token}` }
         })
         if (res.ok) {

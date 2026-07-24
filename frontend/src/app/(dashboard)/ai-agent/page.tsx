@@ -92,7 +92,7 @@ export default function AIAgentPage() {
         const token = session.access_token
         
         // Mock getting active account - in a real app, you'd get this from context or an API
-        const accountsRes = await fetch("http://127.0.0.1:8000/api/accounts/", { 
+        const accountsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/accounts/`, { 
           headers: { "Authorization": `Bearer ${token}` } 
         })
         const accounts = await accountsRes.json()
@@ -102,7 +102,7 @@ export default function AIAgentPage() {
           setAccountId(activeAccount.instagram_account_id)
           
           // Fetch active automations
-          const automationsRes = await fetch("http://127.0.0.1:8000/api/automations/", {
+          const automationsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`, {
             headers: { "Authorization": `Bearer ${token}` }
           })
           if (automationsRes.ok) {
@@ -111,7 +111,7 @@ export default function AIAgentPage() {
           }
           
           // Fetch settings
-          const settingsRes = await fetch(`http://127.0.0.1:8000/api/ai_agents/${activeAccount.instagram_account_id}`, { 
+          const settingsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/ai_agents/${activeAccount.instagram_account_id}`, { 
             headers: { "Authorization": `Bearer ${token}` } 
           })
           if (settingsRes.ok) {
@@ -170,7 +170,7 @@ export default function AIAgentPage() {
       }
       const token = session.access_token
       
-      const res = await fetch(`http://127.0.0.1:8000/api/ai_agents/${accountId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/ai_agents/${accountId}`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",

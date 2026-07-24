@@ -134,7 +134,7 @@ export function AutomationsTable() {
   const { data: rawAutomations, isLoading: loading } = useRealtimeQuery({
     queryKey: ['automations'],
     queryFn: async () => {
-      const res = await fetch("http://127.0.0.1:8000/api/automations/")
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`)
       const data = await res.json()
       if (Array.isArray(data)) {
         return data.map(item => ({
@@ -176,7 +176,7 @@ export function AutomationsTable() {
 
     const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/automations/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${id}`, {
         method: 'PUT',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus, active: newStatus === 'Active' })
@@ -214,7 +214,7 @@ export function AutomationsTable() {
     if (!automationToDelete) return
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/automations/${automationToDelete.id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${automationToDelete.id}`, {
         method: 'DELETE'
       })
       if (res.ok) {

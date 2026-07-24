@@ -17,7 +17,7 @@ export default function BillingPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/automations/");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`);
         const data = await res.json();
         if (Array.isArray(data)) {
           setAutomationsUsed(data.length);

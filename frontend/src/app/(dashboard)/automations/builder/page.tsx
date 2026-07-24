@@ -140,7 +140,7 @@ export default function AutomationBuilderPage() {
     
     if (id) {
       setIsLoadingCheck(false)
-      fetch(`http://127.0.0.1:8000/api/automations/${id}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${id}`)
         .then(res => res.json())
         .then(data => {
           if (data && data.config) {
@@ -158,7 +158,7 @@ export default function AutomationBuilderPage() {
       }
       
       // Check limits before allowing creation
-      fetch("http://127.0.0.1:8000/api/automations/")
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data) && data.length >= 5) {
@@ -195,7 +195,7 @@ export default function AutomationBuilderPage() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const res = await fetch('http://127.0.0.1:8000/api/automations/upload', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -215,8 +215,8 @@ export default function AutomationBuilderPage() {
     if (state.postSelection === 'manual' && media.length === 0 && !isLoadingMedia) {
       setIsLoadingMedia(true)
       const endpoint = state.automation_type === 'auto_reply_story' 
-        ? 'http://127.0.0.1:8000/api/auth/meta/stories'
-        : 'http://127.0.0.1:8000/api/auth/meta/media'
+        ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/auth/meta/stories`
+        : `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/auth/meta/media`
         
       fetch(endpoint)
         .then(res => res.json())
@@ -239,8 +239,8 @@ export default function AutomationBuilderPage() {
       
       const method = id ? 'PUT' : 'POST'
       const url = id 
-        ? `http://127.0.0.1:8000/api/automations/${id}`
-        : 'http://127.0.0.1:8000/api/automations/'
+        ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${id}`
+        : `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`
 
       const res = await fetch(url, {
         method: method,
@@ -1079,8 +1079,8 @@ export default function AutomationBuilderPage() {
                  try {
                    const method = editId ? "PUT" : "POST"
                    const url = editId 
-                     ? `http://127.0.0.1:8000/api/automations/${editId}` 
-                     : `http://127.0.0.1:8000/api/automations/`
+                     ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${editId}` 
+                     : `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`
                      
                    const res = await fetch(url, {
                      method,
@@ -1112,8 +1112,8 @@ export default function AutomationBuilderPage() {
                  try {
                    const method = editId ? "PUT" : "POST"
                    const url = editId 
-                     ? `http://127.0.0.1:8000/api/automations/${editId}` 
-                     : `http://127.0.0.1:8000/api/automations/`
+                     ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${editId}` 
+                     : `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`
                      
                    const res = await fetch(url, {
                      method,
