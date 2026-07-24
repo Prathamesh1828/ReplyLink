@@ -23,7 +23,11 @@ export function useRealtimeQuery<TQueryFnData = unknown, TError = unknown, TData
     // Fall back to polling every 10s if realtime disconnects or errors
     refetchInterval: (query) => {
       // If user explicitly provided a refetch interval, respect it
-      if (options.refetchInterval) return options.refetchInterval;
+      if (options.refetchInterval !== undefined) {
+        return typeof options.refetchInterval === 'function' 
+          ? options.refetchInterval(query) 
+          : options.refetchInterval;
+      }
       // Otherwise fallback if realtime is down
       return isRealtimeActive ? false : 10000;
     },

@@ -198,7 +198,7 @@ export function ContactsTable() {
                     <TableCell className="justify-self-start flex items-center gap-3 w-full py-4">
                       <Avatar className="h-10 w-10 shrink-0">
                         <AvatarFallback className="text-sm font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {contact.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()}
+                          {contact.name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-[15px] font-medium text-slate-500 dark:text-slate-400 truncate">
