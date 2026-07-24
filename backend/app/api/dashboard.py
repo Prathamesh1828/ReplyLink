@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Depends
 from typing import Dict, Any, List, Optional
 from app.services.supabase_service import supabase
 
