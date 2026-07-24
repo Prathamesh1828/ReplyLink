@@ -357,7 +357,7 @@ export default function AIAgentPage() {
               </p>
             </div>
             <div className="space-y-3">
-              <Select value={activation} onValueChange={setActivation}>
+              <Select value={activation} onValueChange={(val) => setActivation(val || "after_keyword_automation")}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select activation mode">
                     {activation === "all_dms" ? (
