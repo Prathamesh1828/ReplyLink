@@ -497,7 +497,7 @@ export default function AIAgentPage() {
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 Primary Goal
               </label>
-              <Select value={aiGoal} onValueChange={setAiGoal}>
+              <Select value={aiGoal} onValueChange={(val) => setAiGoal(val as string)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select goal" />
                 </SelectTrigger>
@@ -597,7 +597,7 @@ export default function AIAgentPage() {
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Reply Delay
                 </label>
-                <Select value={replyDelay} onValueChange={setReplyDelay}>
+                <Select value={replyDelay} onValueChange={(val) => setReplyDelay(val as string)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select delay" />
                   </SelectTrigger>
@@ -615,7 +615,7 @@ export default function AIAgentPage() {
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Message Length
                 </label>
-                <Select value={messageLength} onValueChange={setMessageLength}>
+                <Select value={messageLength} onValueChange={(val) => setMessageLength(val as string)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select length" />
                   </SelectTrigger>
