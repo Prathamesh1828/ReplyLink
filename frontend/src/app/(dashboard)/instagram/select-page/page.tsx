@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, Instagram } from "lucide-react"
+import { RefreshCw, Camera } from "lucide-react"
 import { createClient } from "@/utils/supabase/client"
 
 export default function SelectPage() {
@@ -101,7 +101,7 @@ export default function SelectPage() {
             <Card key={account.id}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Instagram className="h-5 w-5" />
+                  <Camera className="h-5 w-5" />
                   {account.instagram_username ? `@${account.instagram_username}` : "Instagram Account"}
                 </CardTitle>
                 <CardDescription>
