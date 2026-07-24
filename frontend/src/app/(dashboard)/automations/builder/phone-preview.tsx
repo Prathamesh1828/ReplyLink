@@ -377,9 +377,9 @@ function PostSelectionScreen({ state, account, media = [] }: { state: BuilderSta
   )
 }
 
-function CommentsScreen({ state, account, media = [] }: { state: BuilderState, account: any, media?: any[] }) {
+function CommentsScreen({ state, account, media = [], newKeyword }: { state: BuilderState, account: any, media?: any[], newKeyword?: string }) {
   const reply = state.publicReplies.length > 0 ? state.publicReplies[0] : "Please check the DM"
-  const keyword = state.keywordType === 'any' ? "Awesome!" : (state.keywords[0] || "link")
+  const keyword = state.keywordType === 'any' ? "Awesome!" : (state.keywords[0] || newKeyword || "link")
   
   const isNoPost = state.postSelection === 'manual' && state.selectedPostIds.length === 0;
   const selectedPost = state.postSelection === 'manual' && state.selectedPostIds.length > 0 && media.length > 0
