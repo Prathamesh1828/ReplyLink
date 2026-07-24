@@ -66,6 +66,8 @@ function formatDate(dateStr: string) {
 
 const rowGrid = "grid grid-cols-[3fr_1.5fr_0.6fr] sm:grid-cols-[3fr_1.5fr_1fr_0.6fr] md:grid-cols-[3fr_1.5fr_1fr_1.6fr_1.6fr_0.6fr] items-center justify-items-center w-full gap-4 px-4"
 
+import { createClient } from "@/utils/supabase/client"
+
 export function ContactsTable() {
   const [search, setSearch] = useState("")
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
@@ -74,6 +76,8 @@ export function ContactsTable() {
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 10
 
+  const supabase = createClient()
+
   useEffect(() => {
     setCurrentPage(1)
   }, [search, sourceFilter])
@@ -81,9 +85,11 @@ export function ContactsTable() {
   const { data, isLoading } = useRealtimeQuery({
     queryKey: ['contacts'],
     queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return []
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/contacts`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem("token")}`
+          'Authorization': `Bearer ${session.access_token}`
         }
       })
       const json = await res.json()

@@ -2,20 +2,17 @@ from fastapi import APIRouter, Header, HTTPException
 from typing import Dict, Any, List, Optional
 from app.services.supabase_service import supabase
 
+from app.core.dependencies import get_current_user
+
 router = APIRouter(
     prefix="/api/dashboard",
     tags=["Dashboard"]
 )
 
-async def get_user_id(x_user_id: Optional[str] = Header(None)):
-    # Fallback to the user's REAL authenticated UUID for testing
-    return x_user_id or "7dc543e2-2801-49ec-8d10-c6fc07b557d2"
-
 @router.get("/stats")
-async def get_dashboard_stats(x_user_id: Optional[str] = Header(None)):
+async def get_dashboard_stats(user_id: str = Depends(get_current_user)):
     """Returns top-level aggregate statistics for the dashboard."""
     try:
-        user_id = await get_user_id(x_user_id)
         automations = supabase.table("automations").select("id, runs_count, clicks_count").eq("user_id", user_id).execute()
         
         total_automations = len(automations.data)
@@ -37,10 +34,9 @@ async def get_dashboard_stats(x_user_id: Optional[str] = Header(None)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/activity")
-async def get_recent_activity(x_user_id: Optional[str] = Header(None)):
-    """Returns the most recent automation runs for the user."""
+async def get_recent_activity(user_id: str = Depends(get_current_user)):
+    """Returns the most recent automation runs for the activity feed."""
     try:
-        user_id = await get_user_id(x_user_id)
         # Get all automations for the user first to map IDs to names
         autos_res = supabase.table("automations").select("id, name, automation_type").eq("user_id", user_id).execute()
         autos_map = {a["id"]: a for a in autos_res.data}
@@ -72,7 +68,7 @@ async def get_recent_activity(x_user_id: Optional[str] = Header(None)):
         return []
 
 @router.get("/chart")
-async def get_chart_data(x_user_id: Optional[str] = Header(None)):
+async def get_chart_data(user_id: str = Depends(get_current_user)):
     """Returns aggregated chart data for message trends."""
     # Since we aren't tracking historical daily aggregates natively in Supabase right now,
     # we'll return a simple static structure with dynamic totals to populate the chart.
@@ -80,7 +76,6 @@ async def get_chart_data(x_user_id: Optional[str] = Header(None)):
     
     # We will simulate the last 7 days based on the total messages sent.
     try:
-        user_id = await get_user_id(x_user_id)
         automations = supabase.table("automations").select("runs_count").eq("user_id", user_id).execute()
         total = sum(a.get("runs_count", 0) for a in automations.data)
         

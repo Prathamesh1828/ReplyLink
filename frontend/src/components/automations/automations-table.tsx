@@ -78,6 +78,7 @@ const getTemplateName = (type: string) => {
   }
 };
 
+import { createClient } from "@/utils/supabase/client"
 import { useRealtimeQuery } from "@/hooks/use-realtime-query"
 
 const rowGrid = "grid grid-cols-[3fr_1fr_1fr_1.2fr_1.2fr_1fr_1.2fr] items-center justify-items-center w-full gap-4 px-4"
@@ -89,6 +90,8 @@ export function AutomationsTable() {
   const [deleteCountdown, setDeleteCountdown] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 10
+  
+  const supabase = createClient()
 
   useEffect(() => {
     setCurrentPage(1)
@@ -134,7 +137,11 @@ export function AutomationsTable() {
   const { data: rawAutomations, isLoading: loading } = useRealtimeQuery({
     queryKey: ['automations'],
     queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return dummyAutomations;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`, {
+        headers: { "Authorization": `Bearer ${session.access_token}` }
+      })
       const data = await res.json()
       if (Array.isArray(data)) {
         return data.map(item => ({
@@ -176,9 +183,14 @@ export function AutomationsTable() {
 
     const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${id}`, {
         method: 'PUT',
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ status: newStatus, active: newStatus === 'Active' })
       });
       if (res.ok) {
@@ -214,8 +226,13 @@ export function AutomationsTable() {
     if (!automationToDelete) return
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${automationToDelete.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`
+        }
       })
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ['automations'] })

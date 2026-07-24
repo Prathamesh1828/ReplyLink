@@ -13,6 +13,8 @@ import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
+import { createClient } from "@/utils/supabase/client"
+
 export function OverviewCharts() {
   const { theme } = useTheme()
   const primaryColor = theme === "dark" ? "#6D5EF7" : "#6D5EF7"
@@ -20,17 +22,23 @@ export function OverviewCharts() {
   
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<{name: string, total: number}[]>([]);
+  const supabase = createClient()
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/dashboard/chart`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setChartData(data);
-        }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/dashboard/chart`, {
+        headers: { "Authorization": `Bearer ${session.access_token}` }
       })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setChartData(data);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    });
   }, []);
 
   if (loading) {

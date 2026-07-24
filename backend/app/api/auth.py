@@ -120,17 +120,9 @@ def meta_callback(request: Request):
     return RedirectResponse(url=f"{settings.FRONTEND_URL}/instagram/select-page")
 
 @router.get("/meta/media")
-def get_user_meta_media(x_user_id: Optional[str] = Header(None)):
+def get_user_meta_media(user_id: str = Depends(get_current_user)):
     """Fetches the connected Instagram account's media posts."""
-    # Use fallback real ID for testing
-    user_id = x_user_id or "7dc543e2-2801-49ec-8d10-c6fc07b557d2"
-    # Note: Using the real user_id to look up the connected account
-    # but for testing if the frontend isn't sending a token, we might need a fallback.
-    # Let's check connected accounts for this user:
     accounts = account_repository.get_by_user_id(user_id)
-    if not accounts:
-        # Fallback to the hardcoded ID for testing just in case
-        accounts = account_repository.get_by_user_id("7dc543e2-2801-49ec-8d10-c6fc07b557d2")
         
     if not accounts:
         raise HTTPException(status_code=404, detail="No Instagram account connected")
@@ -150,12 +142,9 @@ def get_user_meta_media(x_user_id: Optional[str] = Header(None)):
     return {"media": media}
 
 @router.get("/meta/stories")
-def get_user_meta_stories(x_user_id: Optional[str] = Header(None)):
+def get_user_meta_stories(user_id: str = Depends(get_current_user)):
     """Fetches the connected Instagram account's active stories."""
-    user_id = x_user_id or "7dc543e2-2801-49ec-8d10-c6fc07b557d2"
     accounts = account_repository.get_by_user_id(user_id)
-    if not accounts:
-        accounts = account_repository.get_by_user_id("7dc543e2-2801-49ec-8d10-c6fc07b557d2")
         
     if not accounts:
         raise HTTPException(status_code=404, detail="No Instagram account connected")

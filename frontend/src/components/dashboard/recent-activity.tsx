@@ -4,12 +4,18 @@ import { useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Wand2, MessageCircle, PlusCircle, MessagesSquare } from "lucide-react"
 import { useRealtimeQuery } from "@/hooks/use-realtime-query"
+import { createClient } from "@/utils/supabase/client"
 
 export function RecentActivity() {
+  const supabase = createClient()
   const { data, isLoading: loading } = useRealtimeQuery({
     queryKey: ['recent-activity'],
     queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/dashboard/activity`)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return []
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/dashboard/activity`, {
+        headers: { "Authorization": `Bearer ${session.access_token}` }
+      })
       const json = await res.json()
       if (Array.isArray(json)) return json
       return []

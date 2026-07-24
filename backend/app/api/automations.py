@@ -24,21 +24,15 @@ async def upload_image(file: UploadFile = File(...)):
     backend_url = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
     return {"url": f"{backend_url}/uploads/{filename}"}
 
-async def get_user_id(x_user_id: Optional[str] = Header(None)):
-    # Fallback to the user's REAL authenticated UUID for testing
-    return x_user_id or "7dc543e2-2801-49ec-8d10-c6fc07b557d2"
-
 @router.post("/", response_model=AutomationResponse)
-async def create_automation(automation: AutomationCreate, x_user_id: Optional[str] = Header(None)):
-    user_id = await get_user_id(x_user_id)
+async def create_automation(automation: AutomationCreate, user_id: str = Depends(get_current_user)):
     result = AutomationRepository.create_automation(user_id, automation)
     if not result:
         raise HTTPException(status_code=500, detail="Failed to create automation")
     return result
 
 @router.get("/", response_model=List[AutomationResponse])
-async def get_automations(x_user_id: Optional[str] = Header(None)):
-    user_id = await get_user_id(x_user_id)
+async def get_automations(user_id: str = Depends(get_current_user)):
     return AutomationRepository.get_automations_by_user(user_id)
 
 @router.get("/{automation_id}", response_model=AutomationResponse)

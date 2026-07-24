@@ -5,12 +5,18 @@ import { Wand2, MousePointerClick, Users } from "lucide-react"
 import { Instagram } from "@/components/icons"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRealtimeQuery } from "@/hooks/use-realtime-query"
+import { createClient } from "@/utils/supabase/client"
 
 export function DashboardStats() {
+  const supabase = createClient()
   const { data, isLoading } = useRealtimeQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/dashboard/stats`)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return { total_automations: 0, messages_sent: 0, conversations_started: 0, link_clicks: 0 }
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/dashboard/stats`, {
+        headers: { "Authorization": `Bearer ${session.access_token}` }
+      })
       const json = await res.json()
       if (json.detail) throw new Error(json.detail)
       return json

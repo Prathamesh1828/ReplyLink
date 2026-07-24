@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import EmojiPicker from "emoji-picker-react"
 import { PhonePreview, BuilderState } from "./phone-preview"
 import { cn } from "@/lib/utils"
-
+import { createClient } from "@/utils/supabase/client"
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <div 
@@ -90,6 +90,7 @@ const getTemplateDetails = (type: string | undefined) => {
 };
 
 export default function AutomationBuilderPage() {
+  const supabase = createClient()
   const router = useRouter()
   
   const [state, setState] = useState<BuilderState>({
@@ -138,42 +139,49 @@ export default function AutomationBuilderPage() {
     const id = params.get('id')
     const type = params.get('type')
     
-    if (id) {
-      setIsLoadingCheck(false)
-      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${id}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.config) {
-            setState({
-              ...data.config,
-              automation_type: data.automation_type,
-              automationName: data.name
-            })
-          }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      if (id) {
+        setIsLoadingCheck(false)
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/${id}`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
         })
-        .catch(err => console.error("Failed to load automation:", err))
-    } else {
-      if (type) {
-        updateState({ automation_type: type })
-      }
-      
-      // Check limits before allowing creation
-      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`)
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data) && data.length >= 5) {
-            setIsLimitReached(true)
-          } else {
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.config) {
+              setState({
+                ...data.config,
+                automation_type: data.automation_type,
+                automationName: data.name
+              })
+            }
+          })
+          .catch(err => console.error("Failed to load automation:", err))
+      } else {
+        if (type) {
+          updateState({ automation_type: type })
+        }
+        
+        // Check limits before allowing creation
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (Array.isArray(data) && data.length >= 5) {
+              setIsLimitReached(true)
+            } else {
+              setIsNameModalOpen(true)
+            }
+            setIsLoadingCheck(false)
+          })
+          .catch(err => {
+            console.error("Failed to check limits", err)
             setIsNameModalOpen(true)
-          }
-          setIsLoadingCheck(false)
-        })
-        .catch(err => {
-          console.error("Failed to check limits", err)
-          setIsNameModalOpen(true)
-          setIsLoadingCheck(false)
-        })
-    }
+            setIsLoadingCheck(false)
+          })
+      }
+    });
   }, [])
   
   type EmojiTarget = { type: 'publicReply', index: number } | { type: 'openingMessage' } | { type: 'finalMessage' } | { type: 'askToFollowMessage' } | { type: 'profileButtonLabel' } | { type: 'imFollowingButtonLabel' } | { type: 'buttonLabel' } | null
@@ -192,11 +200,14 @@ export default function AutomationBuilderPage() {
 
   const uploadImageToServer = async (file: File) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       const formData = new FormData();
       formData.append('file', file);
       
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/automations/upload`, {
         method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
         body: formData,
       });
       const data = await res.json();
@@ -218,15 +229,23 @@ export default function AutomationBuilderPage() {
         ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/auth/meta/stories`
         : `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'}/api/auth/meta/media`
         
-      fetch(endpoint)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.media) {
-            setMedia(data.media)
-          }
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) {
+          setIsLoadingMedia(false);
+          return;
+        }
+        fetch(endpoint, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
         })
-        .catch(err => console.error("Failed to load media:", err))
-        .finally(() => setIsLoadingMedia(false))
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.media) {
+              setMedia(data.media)
+            }
+          })
+          .catch(err => console.error("Failed to load media:", err))
+          .finally(() => setIsLoadingMedia(false))
+      });
     }
   }, [state.postSelection, state.automation_type])
   const [isSaving, setIsSaving] = useState(false)
@@ -234,6 +253,8 @@ export default function AutomationBuilderPage() {
   const saveAutomation = async () => {
     setIsSaving(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       const params = new URLSearchParams(window.location.search)
       const id = params.get('id')
       
@@ -244,7 +265,10 @@ export default function AutomationBuilderPage() {
 
       const res = await fetch(url, {
         method: method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({
           name: state.automationName,
           automation_type: state.automation_type || 'dm_reply',

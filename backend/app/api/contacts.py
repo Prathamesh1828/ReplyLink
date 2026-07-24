@@ -2,15 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import List, Dict, Optional
 from app.services.supabase_service import supabase
 
+from app.core.dependencies import get_current_user
+
 router = APIRouter()
 
-async def get_user_id(x_user_id: Optional[str] = Header(None)):
-    return x_user_id or "7dc543e2-2801-49ec-8d10-c6fc07b557d2"
-
 @router.get("/contacts")
-async def get_contacts(x_user_id: Optional[str] = Header(None)):
-    user_id = await get_user_id(x_user_id)
-    
+async def get_contacts(user_id: str = Depends(get_current_user)):
     # 1. Fetch user's automations
     automations_res = supabase.table("automations").select("id, automation_type").eq("user_id", user_id).execute()
     automations = automations_res.data
