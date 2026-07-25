@@ -164,6 +164,30 @@ export function InstagramClient() {
               </div>
             </div>
 
+            {/* Note & Steps to convert */}
+            <div className="w-full max-w-2xl mx-auto text-left bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl p-5">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-amber-900 dark:text-amber-400">Important Note</h4>
+                  <p className="text-sm text-amber-800 dark:text-amber-300/90">
+                    Your Instagram account must be a <span className="font-semibold">Creator</span> or <span className="font-semibold">Business</span> account to connect. Personal accounts are not supported by the official Meta API.
+                  </p>
+                  
+                  <div className="pt-2 border-t border-amber-200/50 dark:border-amber-900/30">
+                    <p className="text-sm font-medium text-amber-900 dark:text-amber-400 mb-2 mt-2">How to convert your account:</p>
+                    <ol className="list-decimal list-inside text-sm text-amber-800 dark:text-amber-300/90 space-y-1.5 ml-1">
+                      <li>Open the Instagram app on your mobile device.</li>
+                      <li>Go to your profile and tap the hamburger menu (three lines) in the top right.</li>
+                      <li>Tap <span className="font-medium">Settings and privacy</span>.</li>
+                      <li>Scroll down and tap <span className="font-medium">Account type and tools</span>.</li>
+                      <li>Tap <span className="font-medium">Switch to professional account</span> and follow the prompts.</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <TrustBadges />
 
             {/* CTA */}
