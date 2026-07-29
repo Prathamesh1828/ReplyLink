@@ -13,7 +13,7 @@ async def get_contacts(user_id: str = Depends(get_current_user)):
     automations = automations_res.data
     
     # Fetch business username
-    account_res = supabase.table("accounts").select("instagram_username").eq("user_id", user_id).execute()
+    account_res = supabase.table("connected_accounts").select("instagram_username").eq("user_id", user_id).execute()
     business_username = account_res.data[0]["instagram_username"] if account_res.data else None
     
     if not automations:
