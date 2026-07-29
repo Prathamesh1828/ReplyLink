@@ -55,8 +55,12 @@ class AutomationService:
                 final_button = config.get("finalLinkLabel", "Get Link")
                 
                 if final_link:
-                    buttons = [{"type": "web_url", "title": final_button, "url": final_link}]
-                    print(f"Sending Final Link Message to {recipient_id}")
+                    import os
+                    backend_url = os.getenv("BACKEND_URL", "https://replylink.onrender.com").rstrip('/')
+                    tracking_url = f"{backend_url}/api/l/{run_id}"
+                    
+                    buttons = [{"type": "web_url", "title": final_button, "url": tracking_url}]
+                    print(f"Sending Final Link Message to {recipient_id} with tracking URL: {tracking_url}")
                     return meta_service.send_dm(recipient_id=recipient_id, message=final_message, page_access_token=page_access_token, buttons=buttons)
                 else:
                     print(f"Sending Final Text Message to {recipient_id}")
