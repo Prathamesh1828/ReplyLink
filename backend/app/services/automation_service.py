@@ -534,7 +534,21 @@ class AutomationService:
                 "Detailed": "Provide a detailed response in paragraphs."
             }.get(message_length, "Keep your response short.")
             
-            advanced_persona = f"{persona}\n\nYour primary goal is: {ai_goal}.\nEnsure your tone is strictly: {tone}.\n{length_instruction}\n{emoji_instruction}"
+            # Lead Qualification Logic
+            lead_qual_enabled = config.get("leadQualificationEnabled", False)
+            qual_questions = config.get("qualificationQuestions", [])
+            lead_instruction = ""
+            
+            if lead_qual_enabled and qual_questions:
+                questions_list = ", ".join(qual_questions)
+                lead_instruction = (
+                    f"\nIMPORTANT LEAD QUALIFICATION: Your primary goal right now is to qualify this lead. "
+                    f"You must ask them for the following information: {questions_list}. "
+                    f"Ask ONLY ONE question at a time in a natural, conversational way. Do not overwhelm them with all questions at once. "
+                    f"Once you have collected all this information, you can proceed with normal assistance."
+                )
+            
+            advanced_persona = f"{persona}\n\nYour primary goal is: {ai_goal}.\nEnsure your tone is strictly: {tone}.\n{length_instruction}\n{emoji_instruction}{lead_instruction}"
             
             # Retrieve relevant knowledge
             from app.services.knowledge_service import search_relevant_knowledge
